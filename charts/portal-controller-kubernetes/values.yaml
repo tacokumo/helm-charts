@@ -1,0 +1,45 @@
+controller:
+  serviceAccount:
+    name: controller-manager
+  terminationGracePeriodSeconds: 10
+  affinity: {}
+  labels: {}
+  annotations: 
+    kubectl.kubernetes.io/default-container: manager
+  securityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - "ALL"
+  podAnnotations: {}
+  podLabels: 
+    app.kubernetes.io/component: controller
+  managerContainer:
+    image:
+      repository: ghcr.io/tacokumo/portal-controller-kubernetes
+      tag: main-6d321aa
+    extraArgs: []
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8081
+      initialDelaySeconds: 15
+      periodSeconds: 20
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8081
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    resources:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
