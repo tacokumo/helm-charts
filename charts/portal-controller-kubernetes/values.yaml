@@ -15,6 +15,7 @@ controller:
   podAnnotations: {}
   podLabels: 
     app.kubernetes.io/component: controller
+  imagePullSecrets: []
   managerContainer:
     image:
       repository: ghcr.io/tacokumo/portal-controller-kubernetes
