@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tacokumo-admin-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/name: tacokumo-admin-api
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    {{- with .Values.api.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- with .Values.api.labels }}
+      {{- toYaml . | nindent 4 }}
+      {{- end }}
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.api.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.api.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        app.kubernetes.io/name: tacokumo-admin-api
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
+        {{- with .Values.api.labels}}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.api.podLabels}}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      affinity:
+        {{- if .Values.api.affinity }}
+        {{- toYaml .Values.api.affinity | nindent 8 }}
+        {{- else }}
+        {}
+        {{- end }}
+      securityContext:
+        {{- toYaml .Values.api.securityContext | nindent 8 }}
+      containers:
+      - name: tacokumo-admin-api
+        image: {{ .Values.api.apiContainer.image.repository }}:{{ .Values.api.apiContainer.image.tag }}
+        ports: []
+        securityContext:
+          {{- toYaml .Values.api.apiContainer.securityContext | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.api.apiContainer.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.api.apiContainer.readinessProbe | nindent 10 }}
+        resources: {{- toYaml .Values.api.apiContainer.resources | nindent 10 }}
+        volumeMounts:
+          - name: tacokumo-admin-api-config
+            mountPath: /app/server.yaml
+            subPath: server-config
+        env:
+          - name: ADMIN_API_CONFIG_FILE
+            value: /app/server.yaml
+          - name: ADMIN_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.api.config.adminDB.secretName }}
+                key: password
+          - name: LOG_LEVEL
+            value: {{ .Values.api.config.logLevel }}
+          {{- if .Values.api.config.opentelemetry.enabled }}
+          - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+            value: {{ .Values.api.config.opentelemetry.otlpTracesEndpoint }}
+          - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+            value: {{ .Values.api.config.opentelemetry.otlpMetricsEndpoint }}
+          {{- end }}
+          - name: AUTH0_DOMAIN
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.api.config.auth0.secretName }}
+                key: domain
+          - name: AUTH0_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.api.config.auth0.secretName }}
+                key: clientId
+          - name: AUTH0_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.api.config.auth0.secretName }}
+                key: clientSecret
+      volumes:
+      - name: tacokumo-admin-api-config
+        configMap:
+          name: tacokumo-admin-api-config
+      serviceAccountName: {{ .Values.api.serviceAccount.name }}
+      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
