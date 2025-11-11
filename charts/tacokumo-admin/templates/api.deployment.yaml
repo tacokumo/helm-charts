@@ -55,10 +55,14 @@ spec:
         ports: []
         securityContext:
           {{- toYaml .Values.api.apiContainer.securityContext | nindent 10 }}
+        {{- if .Values.api.apiContainer.livenessProbe }}
         livenessProbe:
           {{- toYaml .Values.api.apiContainer.livenessProbe | nindent 10 }}
+        {{- end }}
+        {{- if .Values.api.apiContainer.readinessProbe }}
         readinessProbe:
           {{- toYaml .Values.api.apiContainer.readinessProbe | nindent 10 }}
+        {{- end }}
         resources: {{- toYaml .Values.api.apiContainer.resources | nindent 10 }}
         volumeMounts:
           - name: tacokumo-admin-api-config
