@@ -33,7 +33,8 @@ api:
     name: tacokumo-admin-api
   terminationGracePeriodSeconds: 10
   affinity: {}
-  labels: {}
+  labels:
+    app.kubernetes.io/component: tacokumo-admin-api
   securityContext: {}
   podAnnotations: {}
   podLabels: 
