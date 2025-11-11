@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tacokumo-admin-api-config
+  labels:
+    app.kubernetes.io/name: tacokumo-admin-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  server-config: |
+    addr: {{ .Values.api.config.addr }}
+    port: {{ .Values.api.config.port }}
+    admin_db:
+      host: {{ .Values.api.config.adminDB.host }}
+      port: {{ .Values.api.config.adminDB.port }}
+      user: {{ .Values.api.config.adminDB.user }}
+      db_name: {{ .Values.api.config.adminDB.db_name }}
+      initial_conn_retry: {{ .Values.api.config.adminDB.initial_conn_retry }}
+    auth:
+      domain: {{ .Values.api.config.auth.domain }}
+      audience: {{ .Values.api.config.auth.audience }}
+    cors:
+      allow_origins: {{ .Values.api.config.cors.allow_origins | quote }}
+      allow_methods: {{ .Values.api.config.cors.allow_methods | quote }}
+      allow_headers: {{ .Values.api.config.cors.allow_headers | quote }}
+      expose_headers: {{ .Values.api.config.cors.expose_headers | quote }}
+      allow_credentials: {{ .Values.api.config.cors.allow_credentials }}
+      max_age: {{ .Values.api.config.cors.max_age }}
+    tls:
+      enabled: {{ .Values.api.config.tls.enabled }}
+      {{ if .Values.api.config.tls.enabled }}
+      cert_file: /app/certs/api-server.crt
+      key_file: /app/certs/api-server.key
+      {{ end }}

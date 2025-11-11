@@ -1,0 +1,63 @@
+api:
+  config:
+    addr: "0.0.0.0"
+    port: 8080
+    logLevel: "info"
+    opentelemetry:
+      enabled: false
+      otlpTracesEndpoint: "http://otel-collector:4317"
+      otlpMetricsEndpoint: "http://otel-collector:4317"
+    cors:
+      allow_origins: "*"
+      allow_methods: "GET, POST, PUT, DELETE, OPTIONS"
+      allow_headers: "Authorization, Content-Type"
+      expose_headers: "Content-Type,Authorization"
+      allow_credentials: true
+      max_age: 86400
+    tls:
+      enabled: false
+    auth0:
+      secretName: tacokumo-admin-auth0-credentials
+    adminDB:
+      host: postgresql
+      port: 5432
+      user: admin_api
+      db_name: tacokumo_admin_db
+      initial_conn_retry: 10
+      secretName: tacokumo-admin-db-credentials
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  serviceAccount:
+    name: tacokumo-admin-api
+  terminationGracePeriodSeconds: 10
+  affinity: {}
+  labels: {}
+  securityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - "ALL"
+  podAnnotations: {}
+  podLabels: 
+    app.kubernetes.io/component: tacokumo-admin-api
+  apiContainer:
+    image:
+      repository: ghcr.io/tacokumo/tacokumo-admin
+      tag: main-3e1182a
+    extraArgs: []
+    livenessProbe: {}
+    readinessProbe: {}
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    resources:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
