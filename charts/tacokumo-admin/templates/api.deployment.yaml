@@ -47,14 +47,18 @@ spec:
         {{- else }}
         {}
         {{- end }}
+        {{- if .Values.api.securityContext }}
       securityContext:
         {{- toYaml .Values.api.securityContext | nindent 8 }}
+        {{- end }}
       containers:
       - name: tacokumo-admin-api
         image: {{ .Values.api.apiContainer.image.repository }}:{{ .Values.api.apiContainer.image.tag }}
         ports: []
+        {{- if .Values.api.apiContainer.securityContext }}
         securityContext:
           {{- toYaml .Values.api.apiContainer.securityContext | nindent 10 }}
+        {{- end }}
         {{- if .Values.api.apiContainer.livenessProbe }}
         livenessProbe:
           {{- toYaml .Values.api.apiContainer.livenessProbe | nindent 10 }}

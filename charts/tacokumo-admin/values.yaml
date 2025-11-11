@@ -34,12 +34,7 @@ api:
   terminationGracePeriodSeconds: 10
   affinity: {}
   labels: {}
-  securityContext:
-    readOnlyRootFilesystem: true
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-      - "ALL"
+  securityContext: {}
   podAnnotations: {}
   podLabels: 
     app.kubernetes.io/component: tacokumo-admin-api
@@ -50,10 +45,7 @@ api:
     extraArgs: []
     livenessProbe: {}
     readinessProbe: {}
-    securityContext:
-      runAsNonRoot: true
-      seccompProfile:
-        type: RuntimeDefault
+    securityContext: {}
     resources:
       limits:
         cpu: 500m
