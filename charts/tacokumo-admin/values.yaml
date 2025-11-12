@@ -43,7 +43,7 @@ api:
   apiContainer:
     image:
       repository: ghcr.io/tacokumo/admin-api
-      tag: main-3e1182a
+      tag: main-f45d17a
     extraArgs: []
     livenessProbe: {}
     readinessProbe: {}
