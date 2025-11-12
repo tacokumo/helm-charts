@@ -76,5 +76,5 @@ spec:
         resources: {{- toYaml .Values.controller.managerContainer.resources | nindent 10 }}
         volumeMounts: []
       volumes: []
-      serviceAccountName: {{ .Values.controller.serviceAccount.name }}
+      serviceAccountName: manager
       terminationGracePeriodSeconds: {{ .Values.controller.terminationGracePeriodSeconds }}

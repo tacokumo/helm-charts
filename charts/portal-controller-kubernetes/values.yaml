@@ -1,6 +1,6 @@
+crds:
+  install: true
 controller:
-  serviceAccount:
-    name: controller-manager
   terminationGracePeriodSeconds: 10
   affinity: {}
   labels: {}
