@@ -42,7 +42,7 @@ api:
     app.kubernetes.io/component: tacokumo-admin-api
   apiContainer:
     image:
-      repository: ghcr.io/tacokumo/tacokumo-admin
+      repository: ghcr.io/tacokumo/admin-api
       tag: main-3e1182a
     extraArgs: []
     livenessProbe: {}
