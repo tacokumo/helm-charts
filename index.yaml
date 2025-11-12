@@ -14,6 +14,16 @@ entries:
   tacokumo-admin:
   - apiVersion: v2
     appVersion: 1.16.0
+    created: "2025-11-12T01:17:54.269814545Z"
+    description: A Helm chart for Kubernetes
+    digest: a2d925e651445d8af5967a7c439da94a8d9959895811d5ab045f4fb0380ee073
+    name: tacokumo-admin
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-admin-0.1.4/tacokumo-admin-0.1.4.tgz
+    version: 0.1.4
+  - apiVersion: v2
+    appVersion: 1.16.0
     created: "2025-11-11T17:40:12.281120004Z"
     description: A Helm chart for Kubernetes
     digest: 6c865defe8da0f24657871c99fed8a7a5939264f04282a154fbec5ca6f684b7e
@@ -52,4 +62,4 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-admin-0.1.0/tacokumo-admin-0.1.0.tgz
     version: 0.1.0
-generated: "2025-11-11T17:40:12.281135724Z"
+generated: "2025-11-12T01:17:54.269831907Z"
