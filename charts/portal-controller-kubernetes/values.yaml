@@ -19,7 +19,7 @@ controller:
   managerContainer:
     image:
       repository: ghcr.io/tacokumo/portal-controller-kubernetes
-      tag: main-a3ddec5
+      tag: main
     extraArgs: []
     livenessProbe:
       httpGet:
