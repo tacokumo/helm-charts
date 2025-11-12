@@ -15,9 +15,8 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- with .Values.controller.labels }}
-      {{- toYaml . | nindent 4 }}
-      {{- end }}
+      app.kubernetes.io/name: portal-controller-kubernetes
+      app.kubernetes.io/instance: {{ .Release.Name }}
   replicas: 1
   template:
     metadata:
@@ -34,9 +33,6 @@ spec:
         app.kubernetes.io/managed-by: {{ .Release.Service }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/version: {{ .Chart.AppVersion }}
-        {{- with .Values.controller.labels}}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
         {{- with .Values.controller.podLabels}}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -47,15 +43,15 @@ spec:
         {{- else }}
         {}
         {{- end }}
+        {{- if .Values.controller.securityContext }}
       securityContext:
         {{- toYaml .Values.controller.securityContext | nindent 8 }}
-      {{- with .Values.controller.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       containers:
-      - command:
-        - /manager
+      - name: manager
+        image: {{ .Values.controller.managerContainer.image.repository }}:{{ .Values.controller.managerContainer.image.tag }}
+        command:
+          - /manager
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
@@ -64,15 +60,22 @@ spec:
           - {{ . }}
           {{- end }}
           {{- end }}
-        image: {{ .Values.controller.managerContainer.image.repository }}:{{ .Values.controller.managerContainer.image.tag }}
-        name: manager
-        ports: []
+        ports:
+          - name: healthz
+            containerPort: 8081
+            protocol: TCP
+        {{- if .Values.controller.managerContainer.securityContext }}
         securityContext:
           {{- toYaml .Values.controller.managerContainer.securityContext | nindent 10 }}
+        {{- end }}
+        {{- if .Values.controller.managerContainer.livenessProbe }}
         livenessProbe:
           {{- toYaml .Values.controller.managerContainer.livenessProbe | nindent 10 }}
+        {{- end }}
+        {{- if .Values.controller.managerContainer.readinessProbe }}
         readinessProbe:
           {{- toYaml .Values.controller.managerContainer.readinessProbe | nindent 10 }}
+        {{- end }}
         resources: {{- toYaml .Values.controller.managerContainer.resources | nindent 10 }}
         volumeMounts: []
       volumes: []
