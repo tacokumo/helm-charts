@@ -1,9 +1,9 @@
 apiVersion: v2
 name: tacokumo-admin
-description: A Helm chart for Kubernetes
+description: Helm chart for deploying Tacokumo Admin API and UI with GitHub OAuth authentication
 
 type: application
 
-version: 0.1.7
+version: 0.1.8
 
 appVersion: "1.16.0"
