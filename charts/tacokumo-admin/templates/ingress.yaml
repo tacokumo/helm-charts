@@ -38,9 +38,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ .service }}
+                name: tacokumo-admin
                 port:
-                  number: {{ .port }}
+                  number: {{ $.Values.admin.service.port }}
           {{- end }}
     {{- end }}
 {{- end }}

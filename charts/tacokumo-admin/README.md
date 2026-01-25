@@ -1,8 +1,13 @@
 # Tacokumo Admin Helm Chart
 
-This Helm chart deploys the Tacokumo Admin system, which consists of:
-- **Admin API**: Go-based REST API with GitHub OAuth authentication
-- **Admin UI**: Next.js-based frontend application
+This Helm chart deploys the Tacokumo Admin system, a unified Go application built with Echo framework and Go templates for the UI.
+
+## Architecture
+
+The admin application is a single monolithic service that includes:
+- **Web UI**: Server-rendered pages using Go templates
+- **REST API**: Backend API endpoints
+- **GitHub OAuth**: Authentication via GitHub organization membership
 - **External Dependencies**: PostgreSQL and Redis/Valkey services
 
 ## Prerequisites
@@ -11,7 +16,7 @@ Before deploying this chart, ensure you have:
 
 1. **External PostgreSQL Database**:
    - Database: `tacokumo_admin_db`
-   - User: `admin_api` with appropriate permissions
+   - User with appropriate permissions
 
 2. **External Redis/Valkey Instance**:
    - Accessible from the Kubernetes cluster
@@ -19,7 +24,7 @@ Before deploying this chart, ensure you have:
 
 3. **GitHub OAuth Application**:
    - Client ID and Client Secret
-   - Callback URL configured: `https://your-domain.com/v1alpha1/auth/callback`
+   - Callback URL configured: `https://your-domain.com/auth/callback`
 
 4. **Kubernetes Cluster**:
    - Ingress controller (nginx recommended)
@@ -58,35 +63,63 @@ global:
       host: "your-postgresql-host"
       port: 5432
       database: "tacokumo_admin_db"
-      username: "admin_api"
+      username: "admin"
+      initialConnRetry: 10
     redis:
       host: "your-redis-host"
       port: 6379
+      db: 0
+      initialConnRetry: 10
 
 # GitHub OAuth settings
 github:
   oauth:
-    callbackUrl: "https://your-domain.com/v1alpha1/auth/callback"
-    allowedOrgs: "your-org-1,your-org-2"
+    callbackUrl: "https://your-domain.com/auth/callback"
+    org: "your-github-org"
+  session:
+    ttl: "24h"
+    cookieSecure: true
+  frontendUrl: "https://your-domain.com"
+
+# Admin application settings
+admin:
+  baseDomain: "tacokumo.dev"
+  config:
+    logLevel: "info"
+    opentelemetry:
+      enabled: false
+      serviceName: "tacokumo-admin"
+      tracesExporter: "otlp"
+      otlpEndpoint: "http://otel-collector:4317"
+      otlpProtocol: "grpc"
 
 # Ingress configuration
 ingress:
+  enabled: true
   hosts:
     - host: your-domain.com
       paths:
         - path: /
           pathType: Prefix
-          service: tacokumo-admin-ui
-          port: 3000
-        - path: /api
-          pathType: Prefix
-          service: tacokumo-admin-api
-          port: 8080
   tls:
     - secretName: your-tls-secret
       hosts:
         - your-domain.com
 ```
+
+### Key Configuration Options
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `admin.replicaCount` | Number of replicas | `1` |
+| `admin.baseDomain` | Base domain for projects | `"tacokumo.dev"` |
+| `admin.config.logLevel` | Log level (debug, info, warn, error) | `"info"` |
+| `admin.config.opentelemetry.enabled` | Enable OpenTelemetry tracing | `false` |
+| `admin.livenessProbe.path` | Liveness probe endpoint | `/healthz` |
+| `admin.readinessProbe.path` | Readiness probe endpoint | `/readyz` |
+| `github.oauth.org` | GitHub organization for access control | `""` |
+| `github.session.ttl` | Session TTL duration | `"24h"` |
+| `github.session.cookieSecure` | Enable secure cookies | `true` |
 
 ## Deployment
 
@@ -107,18 +140,16 @@ ingress:
 
 3. **Check health endpoints**:
    ```bash
-   # API health
-   curl https://your-domain.com/api/v1alpha1/health/liveness
+   # Liveness check
+   curl https://your-domain.com/healthz
 
-   # UI health
-   curl https://your-domain.com/api/health
+   # Readiness check
+   curl https://your-domain.com/readyz
    ```
 
 ## Service Communication
 
 - **External Access**: `https://your-domain.com`
-  - UI: `/` (served by Next.js on port 3000)
-  - API: `/api/*` (proxied to Go service on port 8080)
-- **Internal Communication**: UI → API via `http://tacokumo-admin-api:8080`
-- **Authentication Flow**: API handles GitHub OAuth, UI displays login/logout
-
+  - All routes served by the unified admin service on port 8080
+- **Authentication Flow**: GitHub OAuth handled internally
+- **Session Management**: Redis-backed sessions
