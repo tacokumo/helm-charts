@@ -41,10 +41,10 @@ data:
 
     # CORS configuration
     cors:
-      allow_origins: {{ .Values.admin.config.cors.allowOrigins }}
-      allow_methods: {{ .Values.admin.config.cors.allowMethods }}
-      allow_headers: {{ .Values.admin.config.cors.allowHeaders }}
-      expose_headers: {{ .Values.admin.config.cors.exposeHeaders }}
+      allow_origins: {{ .Values.admin.config.cors.allowOrigins | quote }}
+      allow_methods: {{ .Values.admin.config.cors.allowMethods | quote }}
+      allow_headers: {{ .Values.admin.config.cors.allowHeaders | quote }}
+      expose_headers: {{ .Values.admin.config.cors.exposeHeaders | quote }}
       allow_credentials: {{ .Values.admin.config.cors.allowCredentials }}
       max_age: {{ .Values.admin.config.cors.maxAge }}
 
