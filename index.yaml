@@ -114,6 +114,17 @@ entries:
   tacokumo-admin:
   - apiVersion: v2
     appVersion: 2.0.0
+    created: "2026-01-26T09:58:40.534714442Z"
+    description: Helm chart for deploying Tacokumo Admin (unified Go application with
+      GitHub OAuth authentication)
+    digest: d25903b151caa5fcf5107f66f2c5665acc2318b89f70908f3128bfdb19adfc89
+    name: tacokumo-admin
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-admin-0.2.2/tacokumo-admin-0.2.2.tgz
+    version: 0.2.2
+  - apiVersion: v2
+    appVersion: 2.0.0
     created: "2026-01-26T08:49:16.832938083Z"
     description: Helm chart for deploying Tacokumo Admin (unified Go application with
       GitHub OAuth authentication)
@@ -236,4 +247,4 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-proxy-0.1.0/tacokumo-portal-proxy-0.1.0.tgz
     version: 0.1.0
-generated: "2026-01-26T08:49:16.833029253Z"
+generated: "2026-01-26T09:58:40.534778522Z"
