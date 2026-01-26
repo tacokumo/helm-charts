@@ -72,38 +72,28 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.admin.resources | nindent 10 }}
+        volumeMounts:
+          - name: config
+            mountPath: /etc/admin
+            readOnly: true
         env:
-          # Basic configuration
-          - name: ADDR
-            value: {{ .Values.admin.config.addr | quote }}
-          - name: PORT
-            value: {{ .Values.admin.config.port | quote }}
-          - name: BASE_DOMAIN
-            value: {{ .Values.admin.baseDomain | quote }}
-          - name: LOG_LEVEL
-            value: {{ .Values.admin.config.logLevel | quote }}
+          # Configuration file path (required by the application)
+          - name: ADMIN_CONFIG_FILE
+            value: "/etc/admin/config.yaml"
 
-          # GitHub OAuth
+          # GitHub OAuth (sensitive values that override config file)
           - name: GITHUB_CLIENT_ID
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.github.oauth.secretName }}
+                name: {{ .Values.admin.github.oauth.secretName }}
                 key: clientId
           - name: GITHUB_CLIENT_SECRET
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.github.oauth.secretName }}
+                name: {{ .Values.admin.github.oauth.secretName }}
                 key: clientSecret
-          - name: GITHUB_CALLBACK_URL
-            value: {{ .Values.github.oauth.callbackUrl | quote }}
           - name: GITHUB_ORG
-            value: {{ .Values.github.oauth.org | quote }}
-          - name: FRONTEND_URL
-            value: {{ .Values.github.frontendUrl | quote }}
-          - name: SESSION_TTL
-            value: {{ .Values.github.session.ttl | quote }}
-          - name: COOKIE_SECURE
-            value: {{ .Values.github.session.cookieSecure | quote }}
+            value: {{ .Values.admin.config.auth.githubOrg | quote }}
 
           # PostgreSQL
           - name: ADMIN_DB_HOST
@@ -140,40 +130,9 @@ spec:
           - name: REDIS_INITIAL_CONN_RETRY
             value: {{ .Values.global.externalServices.redis.initialConnRetry | quote }}
 
-          # CORS
-          - name: CORS_ALLOW_ORIGINS
-            value: {{ .Values.admin.config.cors.allowOrigins | quote }}
-          - name: CORS_ALLOW_METHODS
-            value: {{ .Values.admin.config.cors.allowMethods | quote }}
-          - name: CORS_ALLOW_HEADERS
-            value: {{ .Values.admin.config.cors.allowHeaders | quote }}
-          - name: CORS_EXPOSE_HEADERS
-            value: {{ .Values.admin.config.cors.exposeHeaders | quote }}
-          - name: CORS_ALLOW_CREDENTIALS
-            value: {{ .Values.admin.config.cors.allowCredentials | quote }}
-          - name: CORS_MAX_AGE
-            value: {{ .Values.admin.config.cors.maxAge | quote }}
-
-          # TLS (optional)
-          {{- if .Values.admin.config.tls.enabled }}
-          - name: TLS_ENABLED
-            value: "true"
-          - name: TLS_CERT_FILE
-            value: {{ .Values.admin.config.tls.certFile | quote }}
-          - name: TLS_KEY_FILE
-            value: {{ .Values.admin.config.tls.keyFile | quote }}
-          {{- end }}
-
-          # OpenTelemetry (optional)
-          {{- if .Values.admin.config.opentelemetry.enabled }}
-          - name: OTEL_SERVICE_NAME
-            value: {{ .Values.admin.config.opentelemetry.serviceName | quote }}
-          - name: OTEL_TRACES_EXPORTER
-            value: {{ .Values.admin.config.opentelemetry.tracesExporter | quote }}
-          - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: {{ .Values.admin.config.opentelemetry.otlpEndpoint | quote }}
-          - name: OTEL_EXPORTER_OTLP_PROTOCOL
-            value: {{ .Values.admin.config.opentelemetry.otlpProtocol | quote }}
-          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "tacokumo-admin.fullname" . }}-config
       serviceAccountName: {{ .Values.admin.serviceAccount.name }}
       terminationGracePeriodSeconds: {{ .Values.admin.terminationGracePeriodSeconds }}
