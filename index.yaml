@@ -204,4 +204,15 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-admin-0.1.0/tacokumo-admin-0.1.0.tgz
     version: 0.1.0
-generated: "2026-01-26T03:10:05.661334253Z"
+  tacokumo-portal-proxy:
+  - apiVersion: v2
+    appVersion: "2.11"
+    created: "2026-01-26T03:35:34.290320921Z"
+    description: Helm chart for Tacokumo Portal Proxy with Caddy
+    digest: 17648d392dadb5c551b88bde565dcc66e3399944a68c0a5eff94ec3c9b824d53
+    name: tacokumo-portal-proxy
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-proxy-0.1.0/tacokumo-portal-proxy-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-01-26T03:35:34.290377276Z"
