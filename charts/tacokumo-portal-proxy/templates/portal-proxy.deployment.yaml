@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tacokumo-portal-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/name: tacokumo-portal-proxy
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tacokumo-portal-proxy
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  replicas: {{ .Values.portalProxy.replicaCount }}
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        app.kubernetes.io/name: tacokumo-portal-proxy
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    spec:
+      containers:
+      - name: portal-proxy
+        image: "{{ .Values.portalProxy.image.repository }}:{{ .Values.portalProxy.image.tag }}"
+        imagePullPolicy: {{ .Values.portalProxy.image.pullPolicy }}
+        ports:
+          - name: http
+            containerPort: 80
+            protocol: TCP
+          - name: metrics
+            containerPort: 2019
+            protocol: TCP
+        securityContext:
+          {{- toYaml .Values.portalProxy.securityContext | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.portalProxy.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.portalProxy.readinessProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.portalProxy.resources | nindent 10 }}
+        volumeMounts:
+          - name: caddyfile
+            mountPath: /etc/caddy/Caddyfile
+            subPath: Caddyfile
+            readOnly: true
+      volumes:
+        - name: caddyfile
+          configMap:
+            name: tacokumo-portal-proxy-caddyfile
+      terminationGracePeriodSeconds: 30

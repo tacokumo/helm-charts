@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tacokumo-portal-proxy
+description: Helm chart for Tacokumo Portal Proxy with Caddy
+type: application
+version: 0.1.0
+appVersion: "2.11"

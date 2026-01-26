@@ -1,0 +1,44 @@
+portalProxy:
+  replicaCount: 1
+  baseDomain: "tacokumo.dev"
+
+  image:
+    repository: caddy
+    tag: "2.11"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    httpPort: 80
+    metricsPort: 2019
+
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 30
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 2019
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - "ALL"
