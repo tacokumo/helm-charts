@@ -247,6 +247,18 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-application-0.1.0/tacokumo-application-0.1.0.tgz
     version: 0.1.0
+  tacokumo-portal:
+  - apiVersion: v2
+    appVersion: 2.0.0
+    created: "2026-01-29T07:11:33.050420294Z"
+    description: Helm chart for deploying Tacokumo Portal (unified Go application
+      with GitHub OAuth authentication)
+    digest: 2a96b949c2ee798b056e6e32f9104767991f571e5077c06de34650f8b858757a
+    name: tacokumo-portal
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-0.2.2/tacokumo-portal-0.2.2.tgz
+    version: 0.2.2
   tacokumo-portal-proxy:
   - apiVersion: v2
     appVersion: "2.11"
@@ -258,4 +270,4 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-proxy-0.1.0/tacokumo-portal-proxy-0.1.0.tgz
     version: 0.1.0
-generated: "2026-01-29T06:15:19.559065943Z"
+generated: "2026-01-29T07:11:33.05047176Z"
