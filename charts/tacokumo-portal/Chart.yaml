@@ -1,0 +1,9 @@
+apiVersion: v2
+name: tacokumo-portal
+description: Helm chart for deploying Tacokumo Portal (unified Go application with GitHub OAuth authentication)
+
+type: application
+
+version: 0.2.2
+
+appVersion: "2.0.0"
