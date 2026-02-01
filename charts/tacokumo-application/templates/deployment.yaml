@@ -7,7 +7,6 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  replicas: {{ .Values.main.replicaCount }}
   selector:
     matchLabels:
       application: {{ .Values.main.applicationName }}
@@ -28,8 +27,22 @@ spec:
         - name: {{ .Values.main.applicationName }}
           image: "{{ .Values.main.image }}"
           imagePullPolicy: {{ .Values.main.imagePullPolicy }}
+          {{- if .Values.main.service.enabled }}
+          ports:
+            {{- range .Values.main.service.ports }}
+            - containerPort: {{ .targetPort | default .port }}
+              protocol: {{ .protocol | default "TCP" }}
+              {{- if .name }}
+              name: {{ .name }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
           {{- with .Values.main.envFrom }}
           envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.main.resources }}
+          resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- if .Values.main.livenessProbe }}

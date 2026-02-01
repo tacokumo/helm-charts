@@ -42,18 +42,26 @@ func TestMainConfigValidation(t *testing.T) {
 			name: "valid minimal config",
 			config: MainConfig{
 				ApplicationName: "test-app",
-				ReplicaCount:    1,
 				Image:           "nginx:latest",
 				ImagePullPolicy: "IfNotPresent",
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "missing application name",
 			config: MainConfig{
-				ReplicaCount:    1,
 				Image:           "nginx:latest",
 				ImagePullPolicy: "IfNotPresent",
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
 			},
 			wantErr: true,
 		},
@@ -61,18 +69,54 @@ func TestMainConfigValidation(t *testing.T) {
 			name: "missing image",
 			config: MainConfig{
 				ApplicationName: "test-app",
-				ReplicaCount:    1,
 				ImagePullPolicy: "IfNotPresent",
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
 			},
 			wantErr: true,
 		},
 		{
-			name: "zero replica count",
+			name: "zero min replicas",
 			config: MainConfig{
 				ApplicationName: "test-app",
-				ReplicaCount:    0,
 				Image:           "nginx:latest",
 				ImagePullPolicy: "IfNotPresent",
+				HPA: HPAConfig{
+					MinReplicas:                       0,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "max replicas less than min replicas",
+			config: MainConfig{
+				ApplicationName: "test-app",
+				Image:           "nginx:latest",
+				ImagePullPolicy: "IfNotPresent",
+				HPA: HPAConfig{
+					MinReplicas:                       3,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid memory utilization percentage",
+			config: MainConfig{
+				ApplicationName: "test-app",
+				Image:           "nginx:latest",
+				ImagePullPolicy: "IfNotPresent",
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 101,
+				},
 			},
 			wantErr: true,
 		},
@@ -80,9 +124,13 @@ func TestMainConfigValidation(t *testing.T) {
 			name: "invalid image pull policy",
 			config: MainConfig{
 				ApplicationName: "test-app",
-				ReplicaCount:    1,
 				Image:           "nginx:latest",
 				ImagePullPolicy: "InvalidPolicy",
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
 			},
 			wantErr: true,
 		},
@@ -262,9 +310,13 @@ func TestEnvFromSourceValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := MainConfig{
 				ApplicationName: "test-app",
-				ReplicaCount:    1,
 				Image:           "nginx:latest",
 				EnvFrom:         []EnvFromSource{tt.envFrom},
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
 			}
 
 			err := config.Validate()
@@ -299,14 +351,370 @@ func TestImagePullSecretValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := MainConfig{
 				ApplicationName:  "test-app",
-				ReplicaCount:     1,
 				Image:            "nginx:latest",
 				ImagePullSecrets: []ImagePullSecret{tt.secret},
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
 			}
 
 			err := config.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ImagePullSecret validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestResourceConfigValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		resources ResourceConfig
+		wantErr   bool
+	}{
+		{
+			name:      "empty resources (default)",
+			resources: ResourceConfig{},
+			wantErr:   false,
+		},
+		{
+			name: "limits only",
+			resources: ResourceConfig{
+				Limits: ResourceSpec{
+					CPU:    "500m",
+					Memory: "512Mi",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "requests only",
+			resources: ResourceConfig{
+				Requests: ResourceSpec{
+					CPU:    "100m",
+					Memory: "128Mi",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "both limits and requests",
+			resources: ResourceConfig{
+				Limits: ResourceSpec{
+					CPU:    "500m",
+					Memory: "512Mi",
+				},
+				Requests: ResourceSpec{
+					CPU:    "100m",
+					Memory: "128Mi",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "partial limits (cpu only)",
+			resources: ResourceConfig{
+				Limits: ResourceSpec{
+					CPU: "500m",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "partial limits (memory only)",
+			resources: ResourceConfig{
+				Limits: ResourceSpec{
+					Memory: "512Mi",
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := MainConfig{
+				ApplicationName: "test-app",
+				Image:           "nginx:latest",
+				ImagePullPolicy: "IfNotPresent",
+				Resources:       tt.resources,
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ResourceConfig validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestServiceConfigValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		service ServiceConfig
+		wantErr bool
+	}{
+		{
+			name: "disabled service (no ports required)",
+			service: ServiceConfig{
+				Enabled: false,
+			},
+			wantErr: false,
+		},
+		{
+			name: "enabled service with valid port",
+			service: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Ports: []ServicePortConfig{
+					{
+						Name: "http",
+						Port: 80,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "enabled service without ports",
+			service: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Ports:   []ServicePortConfig{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid service type",
+			service: ServiceConfig{
+				Enabled: true,
+				Type:    "InvalidType",
+				Ports: []ServicePortConfig{
+					{Port: 80},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "NodePort type",
+			service: ServiceConfig{
+				Enabled: true,
+				Type:    "NodePort",
+				Ports: []ServicePortConfig{
+					{
+						Port:     80,
+						NodePort: 30080,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "LoadBalancer type",
+			service: ServiceConfig{
+				Enabled: true,
+				Type:    "LoadBalancer",
+				Ports: []ServicePortConfig{
+					{Port: 80},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple ports",
+			service: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Ports: []ServicePortConfig{
+					{Name: "http", Port: 80, TargetPort: 8080},
+					{Name: "https", Port: 443, TargetPort: 8443},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := MainConfig{
+				ApplicationName: "test-app",
+				Image:           "nginx:latest",
+				Service:         tt.service,
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ServiceConfig validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestServicePortConfigValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		port    ServicePortConfig
+		wantErr bool
+	}{
+		{
+			name: "valid minimal port",
+			port: ServicePortConfig{
+				Port: 80,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid full port config",
+			port: ServicePortConfig{
+				Name:       "http",
+				Port:       80,
+				TargetPort: 8080,
+				Protocol:   "TCP",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid UDP protocol",
+			port: ServicePortConfig{
+				Name:     "dns",
+				Port:     53,
+				Protocol: "UDP",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid SCTP protocol",
+			port: ServicePortConfig{
+				Port:     3868,
+				Protocol: "SCTP",
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing port",
+			port: ServicePortConfig{
+				Name: "http",
+			},
+			wantErr: true,
+		},
+		{
+			name: "port too low",
+			port: ServicePortConfig{
+				Port: 0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "port too high",
+			port: ServicePortConfig{
+				Port: 65536,
+			},
+			wantErr: true,
+		},
+		{
+			name: "targetPort too high",
+			port: ServicePortConfig{
+				Port:       80,
+				TargetPort: 70000,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid protocol",
+			port: ServicePortConfig{
+				Port:     80,
+				Protocol: "HTTP",
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid nodePort",
+			port: ServicePortConfig{
+				Port:     80,
+				NodePort: 30080,
+			},
+			wantErr: false,
+		},
+		{
+			name: "nodePort too low",
+			port: ServicePortConfig{
+				Port:     80,
+				NodePort: 29999,
+			},
+			wantErr: true,
+		},
+		{
+			name: "nodePort too high",
+			port: ServicePortConfig{
+				Port:     80,
+				NodePort: 32768,
+			},
+			wantErr: true,
+		},
+		{
+			name: "max valid port",
+			port: ServicePortConfig{
+				Port: 65535,
+			},
+			wantErr: false,
+		},
+		{
+			name: "min valid port",
+			port: ServicePortConfig{
+				Port: 1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "min valid nodePort",
+			port: ServicePortConfig{
+				Port:     80,
+				NodePort: 30000,
+			},
+			wantErr: false,
+		},
+		{
+			name: "max valid nodePort",
+			port: ServicePortConfig{
+				Port:     80,
+				NodePort: 32767,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := MainConfig{
+				ApplicationName: "test-app",
+				Image:           "nginx:latest",
+				Service: ServiceConfig{
+					Enabled: true,
+					Type:    "ClusterIP",
+					Ports:   []ServicePortConfig{tt.port},
+				},
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ServicePortConfig validation error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

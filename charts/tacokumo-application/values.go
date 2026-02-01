@@ -1,6 +1,8 @@
 package tacokumo_application
 
 import (
+	"fmt"
+
 	helmcharts "github.com/tacokumo/helm-charts"
 )
 
@@ -12,10 +14,18 @@ type Values struct {
 // MainConfig represents the main application configuration
 type MainConfig struct {
 	ApplicationName  string            `yaml:"applicationName" validate:"required"`
-	ReplicaCount     int               `yaml:"replicaCount" validate:"min=1"`
 	Image            string            `yaml:"image" validate:"required"`
 	ImagePullSecrets []ImagePullSecret `yaml:"imagePullSecrets,omitempty" validate:"dive"`
 	ImagePullPolicy  string            `yaml:"imagePullPolicy" validate:"omitempty,oneof=Always IfNotPresent Never"`
+
+	// HPA configuration
+	HPA HPAConfig `yaml:"hpa" validate:"required"`
+
+	// Service configuration
+	Service ServiceConfig `yaml:"service"`
+
+	// Resource limits and requests
+	Resources ResourceConfig `yaml:"resources,omitempty"`
 
 	// Annotations for various Kubernetes resources
 	Annotations    map[string]string `yaml:"annotations,omitempty"`
@@ -28,6 +38,41 @@ type MainConfig struct {
 	LivenessProbe  ProbeConfig `yaml:"livenessProbe"`
 	ReadinessProbe ProbeConfig `yaml:"readinessProbe"`
 	StartupProbe   ProbeConfig `yaml:"startupProbe"`
+}
+
+// ServiceConfig represents Kubernetes Service configuration
+type ServiceConfig struct {
+	Enabled bool                `yaml:"enabled"`
+	Type    string              `yaml:"type,omitempty" validate:"omitempty,oneof=ClusterIP NodePort LoadBalancer"`
+	Ports   []ServicePortConfig `yaml:"ports" validate:"required_if=Enabled true,dive"`
+}
+
+// ServicePortConfig represents a single port configuration for a Service
+type ServicePortConfig struct {
+	Name       string `yaml:"name,omitempty"`
+	Port       int    `yaml:"port" validate:"required,min=1,max=65535"`
+	TargetPort int    `yaml:"targetPort,omitempty" validate:"omitempty,min=1,max=65535"`
+	Protocol   string `yaml:"protocol,omitempty" validate:"omitempty,oneof=TCP UDP SCTP"`
+	NodePort   int    `yaml:"nodePort,omitempty" validate:"omitempty,min=30000,max=32767"`
+}
+
+// HPAConfig represents HorizontalPodAutoscaler configuration
+type HPAConfig struct {
+	MinReplicas                       int `yaml:"minReplicas" validate:"min=1"`
+	MaxReplicas                       int `yaml:"maxReplicas" validate:"min=1,gtefield=MinReplicas"`
+	TargetMemoryUtilizationPercentage int `yaml:"targetMemoryUtilizationPercentage" validate:"min=1,max=100"`
+}
+
+// ResourceConfig represents container resource limits and requests
+type ResourceConfig struct {
+	Limits   ResourceSpec `yaml:"limits,omitempty"`
+	Requests ResourceSpec `yaml:"requests,omitempty"`
+}
+
+// ResourceSpec represents CPU and memory resource specifications
+type ResourceSpec struct {
+	CPU    string `yaml:"cpu,omitempty"`
+	Memory string `yaml:"memory,omitempty"`
 }
 
 // ImagePullSecret represents image pull secret configuration
@@ -106,10 +151,29 @@ func (v *Values) Validate() error {
 
 // Validate validates the MainConfig
 func (m *MainConfig) Validate() error {
-	return helmcharts.ValidateStruct(m)
+	if err := helmcharts.ValidateStruct(m); err != nil {
+		return err
+	}
+	// Validate nested ServiceConfig with custom validation
+	if err := m.Service.Validate(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Validate validates the ProbeConfig
 func (p *ProbeConfig) Validate() error {
 	return helmcharts.ValidateStruct(p)
+}
+
+// Validate validates the ServiceConfig
+func (s *ServiceConfig) Validate() error {
+	if err := helmcharts.ValidateStruct(s); err != nil {
+		return err
+	}
+	// Additional validation: when enabled, ports must not be empty
+	if s.Enabled && len(s.Ports) == 0 {
+		return fmt.Errorf("Service.Ports: ports are required when service is enabled")
+	}
+	return nil
 }

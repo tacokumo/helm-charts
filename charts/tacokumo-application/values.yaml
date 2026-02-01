@@ -1,9 +1,38 @@
 main:
   applicationName: nginx-app
-  replicaCount: 1
   image: "nginx:latest"
+  hpa:
+    minReplicas: 1
+    maxReplicas: 1
+    targetMemoryUtilizationPercentage: 80
   imagePullSecrets: []
   imagePullPolicy: IfNotPresent
+  service:
+    enabled: false
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 80
+        # targetPort: 8080  # 省略時は port と同じ
+        protocol: TCP
+        # nodePort: 30080  # NodePort/LoadBalancer の場合のみ
+    # 複数ポートの例:
+    # ports:
+    #   - name: http
+    #     port: 80
+    #     targetPort: 8080
+    #   - name: https
+    #     port: 443
+    #     targetPort: 8443
+  resources: {}
+  # Example:
+  # resources:
+  #   limits:
+  #     cpu: "500m"
+  #     memory: "512Mi"
+  #   requests:
+  #     cpu: "100m"
+  #     memory: "128Mi"
   annotations:
     tacokumo.io/managed-by: "portal-controller"
   podAnnotations:

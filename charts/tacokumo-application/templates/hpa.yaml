@@ -1,0 +1,22 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.main.applicationName }}
+  annotations:
+    {{- with .Values.main.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.main.applicationName }}
+  minReplicas: {{ .Values.main.hpa.minReplicas }}
+  maxReplicas: {{ .Values.main.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.main.hpa.targetMemoryUtilizationPercentage }}

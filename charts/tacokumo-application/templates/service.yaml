@@ -1,0 +1,26 @@
+{{- if .Values.main.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.main.applicationName }}
+  {{- with .Values.main.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.main.service.type | default "ClusterIP" }}
+  selector:
+    application: {{ .Values.main.applicationName }}
+  ports:
+    {{- range .Values.main.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort | default .port }}
+      protocol: {{ .protocol | default "TCP" }}
+      {{- if .name }}
+      name: {{ .name }}
+      {{- end }}
+      {{- if .nodePort }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
+    {{- end }}
+{{- end }}
