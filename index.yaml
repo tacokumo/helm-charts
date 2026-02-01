@@ -249,6 +249,16 @@ entries:
   tacokumo-application:
   - apiVersion: v2
     appVersion: 1.16.0
+    created: "2026-02-01T15:07:14.421864587Z"
+    description: A Helm chart for Kubernetes
+    digest: da5cdb288bc0034cfa8788c02c6626e7c8cc3f683da4e58db8f2efbcaf2ff66e
+    name: tacokumo-application
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-application-0.2.0/tacokumo-application-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
+    appVersion: 1.16.0
     created: "2026-01-29T06:15:19.559023093Z"
     description: A Helm chart for Kubernetes
     digest: 70fc6a6bf41e20b2abb08c604978c79ab7cefed7be71535608733d575848f4ca
@@ -280,4 +290,4 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-proxy-0.1.0/tacokumo-portal-proxy-0.1.0.tgz
     version: 0.1.0
-generated: "2026-02-01T08:54:09.615662107Z"
+generated: "2026-02-01T15:07:14.421915722Z"
