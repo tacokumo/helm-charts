@@ -1,0 +1,3 @@
+[submodule "portal-controller-kubernetes"]
+	path = portal-controller-kubernetes
+	url = git@github.com:tacokumo/portal-controller-kubernetes.git
