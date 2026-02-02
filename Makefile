@@ -18,8 +18,7 @@ lint:
 .PHONY: submodule copy-crds
 
 submodule:
-	git submodule init
-	git submodule update --recursive
+	git submodule update --init --remote
 
 copy-crds:
 	@mkdir -p charts/portal-controller-kubernetes/templates/crds
