@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   portal-controller-kubernetes:
   - apiVersion: v2
+    appVersion: 0.8.0
+    created: "2026-02-03T15:56:58.690233902Z"
+    description: A Helm chart for Kubernetes
+    digest: 27ac9cc406bb606557e6d9e3cffbf5a542823911e895423b4583144db37cbd7b
+    name: portal-controller-kubernetes
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/portal-controller-kubernetes-0.8.0/portal-controller-kubernetes-0.8.0.tgz
+    version: 0.8.0
+  - apiVersion: v2
     appVersion: 0.7.1
     created: "2026-02-02T16:40:34.768418435Z"
     description: A Helm chart for Kubernetes
@@ -320,4 +330,4 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-proxy-0.1.0/tacokumo-portal-proxy-0.1.0.tgz
     version: 0.1.0
-generated: "2026-02-02T16:40:34.768570248Z"
+generated: "2026-02-03T15:56:58.69036744Z"
