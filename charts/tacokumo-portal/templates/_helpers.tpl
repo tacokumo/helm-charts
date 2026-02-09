@@ -49,3 +49,14 @@ Selector labels
 app.kubernetes.io/name: {{ include "tacokumo-portal.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "tacokumo-portal.serviceAccountName" -}}
+{{- if .Values.api.serviceAccount.create }}
+{{- default "portal-api" .Values.api.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.api.serviceAccount.name }}
+{{- end }}
+{{- end }}

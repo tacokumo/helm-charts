@@ -21,3 +21,6 @@
 .idea/
 *.tmproj
 .vscode/
+# Go files
+*.go
+*_test.go

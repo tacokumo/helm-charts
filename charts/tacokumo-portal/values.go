@@ -1,151 +1,313 @@
 package tacokumo_portal
 
 import (
+	"fmt"
+
 	helmcharts "github.com/tacokumo/helm-charts"
-	admin "github.com/tacokumo/helm-charts/charts/tacokumo-admin"
 )
 
 // Values represents the root configuration for tacokumo-portal Helm chart
-// Similar structure to admin but with portal-specific naming
 type Values struct {
-	Global  GlobalConfig       `yaml:"global" validate:"required"`
-	Portal  PortalConfig       `yaml:"portal" validate:"required"`
-	Ingress helmcharts.Ingress `yaml:"ingress"`
+	API APIConfig `yaml:"api" validate:"required"`
 }
 
-// GlobalConfig represents global configuration shared across components
-// Reuses admin structure with appropriate naming
-type GlobalConfig = admin.GlobalConfig
+// APIConfig represents the API service configuration
+type APIConfig struct {
+	// PortalName is the portal namespace name (REQUIRED, maps to PORTAL_NAME env var)
+	PortalName string `yaml:"portalName" validate:"required"`
 
-// PortalConfig represents the portal application configuration
-// Similar to AdminConfig but with portal-specific field names
-type PortalConfig struct {
-	ReplicaCount int `yaml:"replicaCount" validate:"min=1"`
-
-	// Application configuration
-	Config PortalAppConfig `yaml:"config" validate:"required"`
-
-	// GitHub OAuth configuration
-	GitHub admin.GitHubConfig `yaml:"github" validate:"required"`
+	// LogLevel is the logging level (optional: debug, info, warn, error)
+	LogLevel string `yaml:"logLevel" validate:"omitempty,oneof=debug info warn error"`
 
 	// Container image configuration
 	Image helmcharts.Image `yaml:"image" validate:"required"`
 
+	// HPA configuration
+	HPA HPAConfig `yaml:"hpa"`
+
 	// Service configuration
-	Service PortalServiceConfig `yaml:"service" validate:"required"`
-
-	// Service account configuration
-	ServiceAccount admin.ServiceAccountConfig `yaml:"serviceAccount" validate:"required"`
-
-	// Pod configuration
-	TerminationGracePeriodSeconds int64                  `yaml:"terminationGracePeriodSeconds" validate:"min=0"`
-	Affinity                      *helmcharts.Affinity   `yaml:"affinity,omitempty"`
-	NodeSelector                  map[string]string      `yaml:"nodeSelector,omitempty"`
-	Tolerations                   helmcharts.Tolerations `yaml:"tolerations,omitempty"`
-	Labels                        map[string]string      `yaml:"labels,omitempty"`
-	Annotations                   map[string]string      `yaml:"annotations,omitempty"`
-	PodAnnotations                map[string]string      `yaml:"podAnnotations,omitempty"`
-	PodLabels                     map[string]string      `yaml:"podLabels,omitempty"`
-
-	// Security contexts
-	SecurityContext    *helmcharts.SecurityContext `yaml:"securityContext,omitempty"`
-	PodSecurityContext *admin.PodSecurityContext   `yaml:"podSecurityContext,omitempty"`
-
-	// Health checks
-	LivenessProbe  *admin.HTTPProbeConfig `yaml:"livenessProbe,omitempty"`
-	ReadinessProbe *admin.HTTPProbeConfig `yaml:"readinessProbe,omitempty"`
+	Service ServiceConfig `yaml:"service"`
 
 	// Resource limits and requests
-	Resources helmcharts.Resources `yaml:"resources"`
+	Resources ResourceConfig `yaml:"resources,omitempty"`
 
-	// Additional configurations
-	ImagePullSecrets        []admin.ImagePullSecret        `yaml:"imagePullSecrets,omitempty" validate:"dive"`
-	PodDisruptionBudget     helmcharts.PodDisruptionBudget `yaml:"podDisruptionBudget"`
-	HorizontalPodAutoscaler admin.HPAConfig                `yaml:"horizontalPodAutoscaler"`
+	// Health check probes
+	LivenessProbe  ProbeConfig `yaml:"livenessProbe"`
+	ReadinessProbe ProbeConfig `yaml:"readinessProbe"`
 
-	// Environment variables and volumes
-	Env          []admin.EnvVar        `yaml:"env,omitempty" validate:"dive"`
-	EnvFrom      []admin.EnvFromSource `yaml:"envFrom,omitempty" validate:"dive"`
-	VolumeMounts []admin.VolumeMount   `yaml:"volumeMounts,omitempty" validate:"dive"`
-	Volumes      []admin.Volume        `yaml:"volumes,omitempty" validate:"dive"`
+	// Pod-level security context
+	SecurityContext SecurityContext `yaml:"securityContext"`
+
+	// Container-level security context
+	ContainerSecurityContext SecurityContext `yaml:"containerSecurityContext"`
+
+	// RBAC configuration
+	RBAC RBACConfig `yaml:"rbac"`
+
+	// ServiceAccount configuration
+	ServiceAccount ServiceAccountConfig `yaml:"serviceAccount"`
+
+	// TerminationGracePeriodSeconds for the pod
+	TerminationGracePeriodSeconds int64 `yaml:"terminationGracePeriodSeconds" validate:"omitempty,min=0"`
+
+	// Annotations for the deployment
+	Annotations map[string]string `yaml:"annotations,omitempty"`
+
+	// Annotations for pods
+	PodAnnotations map[string]string `yaml:"podAnnotations,omitempty"`
+
+	// Labels for the deployment
+	Labels map[string]string `yaml:"labels,omitempty"`
+
+	// Labels for pods
+	PodLabels map[string]string `yaml:"podLabels,omitempty"`
+
+	// NodeSelector for pod scheduling
+	NodeSelector map[string]string `yaml:"nodeSelector,omitempty"`
+
+	// Tolerations for pod scheduling
+	Tolerations helmcharts.Tolerations `yaml:"tolerations,omitempty"`
+
+	// Affinity for pod scheduling
+	Affinity *helmcharts.Affinity `yaml:"affinity,omitempty"`
+
+	// ImagePullSecrets for pulling container images
+	ImagePullSecrets []ImagePullSecret `yaml:"imagePullSecrets,omitempty" validate:"dive"`
+
+	// Additional environment variables
+	Env []EnvVar `yaml:"env,omitempty" validate:"dive"`
+
+	// Environment variables from ConfigMaps or Secrets
+	EnvFrom []EnvFromSource `yaml:"envFrom,omitempty" validate:"dive"`
 }
 
-// PortalAppConfig represents the portal application-specific configuration
-// Similar to AdminAppConfig but with portal-specific field names
-type PortalAppConfig struct {
-	// Server settings
-	Addr       string `yaml:"addr" validate:"required,ip"`
-	Port       string `yaml:"port" validate:"required,port_string"`
-	BaseDomain string `yaml:"baseDomain" validate:"required,fqdn"`
-	LogLevel   string `yaml:"logLevel" validate:"required,oneof=debug info warn error"`
-
-	// Database configuration (portal-specific naming)
-	PortalDB PortalDBConfig `yaml:"portalDb" validate:"required"`
-
-	// Authentication configuration
-	Auth admin.AuthAppConfig `yaml:"auth" validate:"required"`
-
-	// Redis configuration
-	Redis admin.RedisAppConfig `yaml:"redis" validate:"required"`
-
-	// CORS configuration
-	CORS admin.CORSAppConfig `yaml:"cors" validate:"required"`
-
-	// TLS configuration
-	TLS admin.TLSAppConfig `yaml:"tls"`
-
-	// OpenTelemetry configuration
-	OpenTelemetry PortalOpenTelemetryAppConfig `yaml:"opentelemetry"`
+// HPAConfig represents HorizontalPodAutoscaler configuration
+type HPAConfig struct {
+	Enabled                           bool `yaml:"enabled"`
+	MinReplicas                       int  `yaml:"minReplicas" validate:"required_if=Enabled true,omitempty,min=1"`
+	MaxReplicas                       int  `yaml:"maxReplicas" validate:"required_if=Enabled true,omitempty,min=1,gtefield=MinReplicas"`
+	TargetMemoryUtilizationPercentage int  `yaml:"targetMemoryUtilizationPercentage" validate:"required_if=Enabled true,omitempty,min=1,max=100"`
 }
 
-// PortalDBConfig represents database configuration in the portal application config
-// Similar to AdminDBConfig but with portal-specific naming
-type PortalDBConfig struct {
-	Host             string `yaml:"host"` // Will be overridden by env var
-	Port             int    `yaml:"port" validate:"min=1,max=65535"`
-	User             string `yaml:"user"`     // Will be overridden by env var
-	Password         string `yaml:"password"` // Will be overridden by env var
-	DBName           string `yaml:"dbName"`   // Will be overridden by env var
-	InitialConnRetry int    `yaml:"initialConnRetry" validate:"min=1"`
+// ServiceConfig represents Kubernetes Service configuration
+type ServiceConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Type    string `yaml:"type,omitempty" validate:"omitempty,oneof=ClusterIP NodePort LoadBalancer"`
+	Port    int    `yaml:"port" validate:"required_if=Enabled true,omitempty,min=1,max=65535"`
 }
 
-// PortalOpenTelemetryAppConfig represents OpenTelemetry configuration for portal
-// Similar to admin but with portal-specific service name defaults
-type PortalOpenTelemetryAppConfig struct {
-	Enabled        bool   `yaml:"enabled"`
-	ServiceName    string `yaml:"serviceName,omitempty"`
-	TracesExporter string `yaml:"tracesExporter,omitempty" validate:"omitempty,oneof=otlp jaeger zipkin console"`
-	OTLPEndpoint   string `yaml:"otlpEndpoint,omitempty" validate:"omitempty,url"`
-	OTLPProtocol   string `yaml:"otlpProtocol,omitempty" validate:"omitempty,oneof=grpc http"`
+// ResourceConfig represents container resource limits and requests
+type ResourceConfig struct {
+	Limits   ResourceSpec `yaml:"limits,omitempty"`
+	Requests ResourceSpec `yaml:"requests,omitempty"`
 }
 
-// PortalServiceConfig represents portal service configuration
-// Identical to AdminServiceConfig but with portal context
-type PortalServiceConfig = admin.AdminServiceConfig
+// ResourceSpec represents CPU and memory resource specifications
+type ResourceSpec struct {
+	CPU    string `yaml:"cpu,omitempty"`
+	Memory string `yaml:"memory,omitempty"`
+}
 
-// Validation methods
+// ProbeConfig represents health check probe configuration
+type ProbeConfig struct {
+	// HTTP probe configuration
+	HTTPGet *HTTPGetAction `yaml:"httpGet,omitempty"`
+
+	// TCP probe configuration
+	TCPSocket *TCPSocketAction `yaml:"tcpSocket,omitempty"`
+
+	// Exec probe configuration
+	Exec *ExecAction `yaml:"exec,omitempty"`
+
+	// Common probe settings
+	InitialDelaySeconds *int `yaml:"initialDelaySeconds,omitempty" validate:"omitempty,min=0"`
+	PeriodSeconds       *int `yaml:"periodSeconds,omitempty" validate:"omitempty,min=1"`
+	TimeoutSeconds      *int `yaml:"timeoutSeconds,omitempty" validate:"omitempty,min=1"`
+	SuccessThreshold    *int `yaml:"successThreshold,omitempty" validate:"omitempty,min=1"`
+	FailureThreshold    *int `yaml:"failureThreshold,omitempty" validate:"omitempty,min=1"`
+}
+
+// HTTPGetAction represents HTTP GET action for probes
+type HTTPGetAction struct {
+	Path        string       `yaml:"path" validate:"required"`
+	Port        int          `yaml:"port" validate:"required,min=1,max=65535"`
+	Host        string       `yaml:"host,omitempty"`
+	Scheme      string       `yaml:"scheme,omitempty" validate:"omitempty,oneof=HTTP HTTPS"`
+	HTTPHeaders []HTTPHeader `yaml:"httpHeaders,omitempty" validate:"dive"`
+}
+
+// TCPSocketAction represents TCP socket action for probes
+type TCPSocketAction struct {
+	Port int    `yaml:"port" validate:"required,min=1,max=65535"`
+	Host string `yaml:"host,omitempty"`
+}
+
+// ExecAction represents exec action for probes
+type ExecAction struct {
+	Command []string `yaml:"command" validate:"required,min=1"`
+}
+
+// HTTPHeader represents HTTP header for probes
+type HTTPHeader struct {
+	Name  string `yaml:"name" validate:"required"`
+	Value string `yaml:"value" validate:"required"`
+}
+
+// SecurityContext represents pod or container security context
+type SecurityContext struct {
+	RunAsUser                *int64        `yaml:"runAsUser,omitempty" validate:"omitempty,min=0"`
+	RunAsGroup               *int64        `yaml:"runAsGroup,omitempty" validate:"omitempty,min=0"`
+	RunAsNonRoot             *bool         `yaml:"runAsNonRoot,omitempty"`
+	ReadOnlyRootFilesystem   *bool         `yaml:"readOnlyRootFilesystem,omitempty"`
+	AllowPrivilegeEscalation *bool         `yaml:"allowPrivilegeEscalation,omitempty"`
+	Capabilities             *Capabilities `yaml:"capabilities,omitempty"`
+	SeccompProfile           *SeccompProfile `yaml:"seccompProfile,omitempty"`
+}
+
+// Capabilities represents security capabilities
+type Capabilities struct {
+	Add  []string `yaml:"add,omitempty"`
+	Drop []string `yaml:"drop,omitempty"`
+}
+
+// SeccompProfile represents seccomp profile configuration
+type SeccompProfile struct {
+	Type             string `yaml:"type" validate:"required,oneof=Unconfined RuntimeDefault Localhost"`
+	LocalhostProfile string `yaml:"localhostProfile,omitempty" validate:"required_if=Type Localhost"`
+}
+
+// RBACConfig represents RBAC configuration
+type RBACConfig struct {
+	Create bool `yaml:"create"`
+}
+
+// ServiceAccountConfig represents ServiceAccount configuration
+type ServiceAccountConfig struct {
+	Create      bool              `yaml:"create"`
+	Name        string            `yaml:"name" validate:"required_if=Create true"`
+	Annotations map[string]string `yaml:"annotations,omitempty"`
+}
+
+// ImagePullSecret represents image pull secret configuration
+type ImagePullSecret struct {
+	Name string `yaml:"name" validate:"required"`
+}
+
+// EnvVar represents environment variable configuration
+type EnvVar struct {
+	Name      string        `yaml:"name" validate:"required"`
+	Value     string        `yaml:"value,omitempty"`
+	ValueFrom *EnvVarSource `yaml:"valueFrom,omitempty"`
+}
+
+// EnvVarSource represents environment variable source
+type EnvVarSource struct {
+	FieldRef         *ObjectFieldSelector   `yaml:"fieldRef,omitempty"`
+	ResourceFieldRef *ResourceFieldSelector `yaml:"resourceFieldRef,omitempty"`
+	ConfigMapKeyRef  *ConfigMapKeySelector  `yaml:"configMapKeyRef,omitempty"`
+	SecretKeyRef     *SecretKeySelector     `yaml:"secretKeyRef,omitempty"`
+}
+
+// ObjectFieldSelector represents object field selector
+type ObjectFieldSelector struct {
+	APIVersion string `yaml:"apiVersion,omitempty"`
+	FieldPath  string `yaml:"fieldPath" validate:"required"`
+}
+
+// ResourceFieldSelector represents resource field selector
+type ResourceFieldSelector struct {
+	ContainerName string `yaml:"containerName,omitempty"`
+	Resource      string `yaml:"resource" validate:"required"`
+	Divisor       string `yaml:"divisor,omitempty"`
+}
+
+// ConfigMapKeySelector represents ConfigMap key selector
+type ConfigMapKeySelector struct {
+	Name     string `yaml:"name" validate:"required"`
+	Key      string `yaml:"key" validate:"required"`
+	Optional *bool  `yaml:"optional,omitempty"`
+}
+
+// SecretKeySelector represents Secret key selector
+type SecretKeySelector struct {
+	Name     string `yaml:"name" validate:"required"`
+	Key      string `yaml:"key" validate:"required"`
+	Optional *bool  `yaml:"optional,omitempty"`
+}
+
+// EnvFromSource represents environment variable source
+type EnvFromSource struct {
+	Prefix       string              `yaml:"prefix,omitempty"`
+	ConfigMapRef *ConfigMapEnvSource `yaml:"configMapRef,omitempty"`
+	SecretRef    *SecretEnvSource    `yaml:"secretRef,omitempty"`
+}
+
+// ConfigMapEnvSource represents ConfigMap environment source
+type ConfigMapEnvSource struct {
+	Name     string `yaml:"name" validate:"required"`
+	Optional *bool  `yaml:"optional,omitempty"`
+}
+
+// SecretEnvSource represents Secret environment source
+type SecretEnvSource struct {
+	Name     string `yaml:"name" validate:"required"`
+	Optional *bool  `yaml:"optional,omitempty"`
+}
 
 // Validate validates the entire Values configuration
 func (v *Values) Validate() error {
 	return helmcharts.ValidateStruct(v)
 }
 
-// Validate validates the PortalConfig
-func (p *PortalConfig) Validate() error {
-	return helmcharts.ValidateStruct(p)
+// Validate validates the APIConfig
+func (a *APIConfig) Validate() error {
+	if err := helmcharts.ValidateStruct(a); err != nil {
+		return err
+	}
+	// Validate nested ServiceConfig with custom validation
+	if err := a.Service.Validate(); err != nil {
+		return err
+	}
+	// Validate nested HPAConfig with custom validation
+	if err := a.HPA.Validate(); err != nil {
+		return err
+	}
+	return nil
 }
 
-// Validate validates the PortalAppConfig
-func (p *PortalAppConfig) Validate() error {
-	return helmcharts.ValidateStruct(p)
+// Validate validates the HPAConfig
+func (h *HPAConfig) Validate() error {
+	if err := helmcharts.ValidateStruct(h); err != nil {
+		return err
+	}
+	// Additional validation: when enabled, all fields must be properly set
+	if h.Enabled {
+		if h.MinReplicas < 1 {
+			return fmt.Errorf("HPA.MinReplicas: must be at least 1 when HPA is enabled")
+		}
+		if h.MaxReplicas < h.MinReplicas {
+			return fmt.Errorf("HPA.MaxReplicas: must be greater than or equal to MinReplicas")
+		}
+		if h.TargetMemoryUtilizationPercentage < 1 || h.TargetMemoryUtilizationPercentage > 100 {
+			return fmt.Errorf("HPA.TargetMemoryUtilizationPercentage: must be between 1 and 100")
+		}
+	}
+	return nil
 }
 
-// Validate validates the PortalDBConfig
-func (p *PortalDBConfig) Validate() error {
-	return helmcharts.ValidateStruct(p)
+// Validate validates the ServiceConfig
+func (s *ServiceConfig) Validate() error {
+	if err := helmcharts.ValidateStruct(s); err != nil {
+		return err
+	}
+	// Additional validation: when enabled, port must be valid
+	if s.Enabled && s.Port == 0 {
+		return fmt.Errorf("Service.Port: port is required when service is enabled")
+	}
+	return nil
 }
 
-// Validate validates the PortalOpenTelemetryAppConfig
-func (p *PortalOpenTelemetryAppConfig) Validate() error {
+// Validate validates the ProbeConfig
+func (p *ProbeConfig) Validate() error {
 	return helmcharts.ValidateStruct(p)
 }

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	admin "github.com/tacokumo/helm-charts/charts/tacokumo-admin"
+	helmcharts "github.com/tacokumo/helm-charts"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,260 +31,115 @@ func TestLoadAndValidateValuesYAML(t *testing.T) {
 	if err != nil {
 		t.Errorf("values.yaml validation failed: %v", err)
 	}
-
-	// Additional specific checks for portal
-	if values.Global.ExternalServices.PostgreSQL.Host == "" {
-		t.Error("PostgreSQL host should not be empty")
-	}
-
-	if values.Global.ExternalServices.Redis.Host == "" {
-		t.Error("Redis host should not be empty")
-	}
-
-	if values.Portal.Config.BaseDomain == "" {
-		t.Error("Base domain should not be empty")
-	}
-
-	if values.Portal.ReplicaCount < 1 {
-		t.Error("Replica count should be at least 1")
-	}
-
-	// Check portal-specific database naming
-	if values.Portal.Config.PortalDB.InitialConnRetry < 1 {
-		t.Error("Portal DB initial connection retry should be at least 1")
-	}
 }
 
-func TestPortalConfigValidation(t *testing.T) {
+func TestAPIConfigValidation(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  PortalConfig
+		config  APIConfig
 		wantErr bool
 	}{
 		{
-			name: "valid portal config",
-			config: PortalConfig{
-				ReplicaCount: 1,
-				Config: PortalAppConfig{
-					Addr:       "0.0.0.0",
-					Port:       "8080",
-					BaseDomain: "example.com",
-					LogLevel:   "info",
-					PortalDB: PortalDBConfig{
-						Port:             5432,
-						InitialConnRetry: 10,
-					},
-					Auth: admin.AuthAppConfig{
-						CallbackURL:  "https://portal.example.com/auth/callback",
-						FrontendURL:  "https://portal.example.com",
-						GitHubOrg:    "test-org",
-						SessionTTL:   "24h",
-						CookieSecure: true,
-					},
-					Redis: admin.RedisAppConfig{
-						Port:             6379,
-						DB:               0,
-						InitialConnRetry: 10,
-					},
-					CORS: admin.CORSAppConfig{
-						AllowOrigins: "*",
-						AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-						AllowHeaders: "Authorization, Content-Type",
-						MaxAge:       86400,
-					},
-				},
-				GitHub: admin.GitHubConfig{
-					OAuth: admin.GitHubOAuthConfig{
-						SecretName: "github-oauth",
-					},
-				},
-				Image: struct {
-					Repository string `yaml:"repository" validate:"required"`
-					Tag        string `yaml:"tag" validate:"required"`
-					PullPolicy string `yaml:"pullPolicy" validate:"omitempty,oneof=Always IfNotPresent Never"`
-				}{
-					Repository: "ghcr.io/tacokumo/portal",
-					Tag:        "main",
-				},
-				Service: PortalServiceConfig{
-					Type:       "ClusterIP",
-					Port:       8080,
-					TargetPort: 8080,
-				},
-				ServiceAccount: admin.ServiceAccountConfig{
-					Name:   "tacokumo-portal",
-					Create: true,
+			name: "valid minimal config",
+			config: APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+					PullPolicy: "IfNotPresent",
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "zero replica count",
-			config: PortalConfig{
-				ReplicaCount: 0,
-				Config: PortalAppConfig{
-					Addr:       "0.0.0.0",
-					Port:       "8080",
-					BaseDomain: "example.com",
-					LogLevel:   "info",
-					PortalDB: PortalDBConfig{
-						Port:             5432,
-						InitialConnRetry: 10,
-					},
-					Auth: admin.AuthAppConfig{
-						CallbackURL:  "https://portal.example.com/auth/callback",
-						FrontendURL:  "https://portal.example.com",
-						GitHubOrg:    "test-org",
-						SessionTTL:   "24h",
-						CookieSecure: true,
-					},
-					Redis: admin.RedisAppConfig{
-						Port:             6379,
-						DB:               0,
-						InitialConnRetry: 10,
-					},
-					CORS: admin.CORSAppConfig{
-						AllowOrigins: "*",
-						AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-						AllowHeaders: "Authorization, Content-Type",
-						MaxAge:       86400,
-					},
-				},
-				GitHub: admin.GitHubConfig{
-					OAuth: admin.GitHubOAuthConfig{
-						SecretName: "github-oauth",
-					},
-				},
-				Image: struct {
-					Repository string `yaml:"repository" validate:"required"`
-					Tag        string `yaml:"tag" validate:"required"`
-					PullPolicy string `yaml:"pullPolicy" validate:"omitempty,oneof=Always IfNotPresent Never"`
-				}{
-					Repository: "ghcr.io/tacokumo/portal",
-					Tag:        "main",
-				},
-				Service: PortalServiceConfig{
-					Type:       "ClusterIP",
-					Port:       8080,
-					TargetPort: 8080,
-				},
-				ServiceAccount: admin.ServiceAccountConfig{
-					Name:   "tacokumo-portal",
-					Create: true,
+			name: "missing portal name",
+			config: APIConfig{
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+					PullPolicy: "IfNotPresent",
 				},
 			},
-			wantErr: true, // ReplicaCount: 0 violates validate:"min=1"
+			wantErr: true,
 		},
 		{
-			name: "missing GitHub OAuth secret name",
-			config: PortalConfig{
-				ReplicaCount: 1,
-				Config: PortalAppConfig{
-					Addr:       "0.0.0.0",
-					Port:       "8080",
-					BaseDomain: "example.com",
-					LogLevel:   "info",
-					PortalDB: PortalDBConfig{
-						Port:             5432,
-						InitialConnRetry: 10,
-					},
-					Auth: admin.AuthAppConfig{
-						CallbackURL:  "https://portal.example.com/auth/callback",
-						FrontendURL:  "https://portal.example.com",
-						GitHubOrg:    "test-org",
-						SessionTTL:   "24h",
-						CookieSecure: true,
-					},
-					Redis: admin.RedisAppConfig{
-						Port:             6379,
-						DB:               0,
-						InitialConnRetry: 10,
-					},
-					CORS: admin.CORSAppConfig{
-						AllowOrigins: "*",
-						AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-						AllowHeaders: "Authorization, Content-Type",
-						MaxAge:       86400,
-					},
-				},
-				GitHub: admin.GitHubConfig{
-					OAuth: admin.GitHubOAuthConfig{},
-				},
-				Image: struct {
-					Repository string `yaml:"repository" validate:"required"`
-					Tag        string `yaml:"tag" validate:"required"`
-					PullPolicy string `yaml:"pullPolicy" validate:"omitempty,oneof=Always IfNotPresent Never"`
-				}{
-					Repository: "ghcr.io/tacokumo/portal",
-					Tag:        "main",
-				},
-				Service: PortalServiceConfig{
-					Type:       "ClusterIP",
-					Port:       8080,
-					TargetPort: 8080,
-				},
-				ServiceAccount: admin.ServiceAccountConfig{
-					Name:   "tacokumo-portal",
-					Create: true,
-				},
+			name: "missing image",
+			config: APIConfig{
+				PortalName: "test-portal",
 			},
-			wantErr: true, // SecretName is required field
+			wantErr: true,
 		},
 		{
-			name: "missing service account name",
-			config: PortalConfig{
-				ReplicaCount: 1,
-				Config: PortalAppConfig{
-					Addr:       "0.0.0.0",
-					Port:       "8080",
-					BaseDomain: "example.com",
-					LogLevel:   "info",
-					PortalDB: PortalDBConfig{
-						Port:             5432,
-						InitialConnRetry: 10,
-					},
-					Auth: admin.AuthAppConfig{
-						CallbackURL:  "https://portal.example.com/auth/callback",
-						FrontendURL:  "https://portal.example.com",
-						GitHubOrg:    "test-org",
-						SessionTTL:   "24h",
-						CookieSecure: true,
-					},
-					Redis: admin.RedisAppConfig{
-						Port:             6379,
-						DB:               0,
-						InitialConnRetry: 10,
-					},
-					CORS: admin.CORSAppConfig{
-						AllowOrigins: "*",
-						AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-						AllowHeaders: "Authorization, Content-Type",
-						MaxAge:       86400,
-					},
-				},
-				GitHub: admin.GitHubConfig{
-					OAuth: admin.GitHubOAuthConfig{
-						SecretName: "github-oauth",
-					},
-				},
-				Image: struct {
-					Repository string `yaml:"repository" validate:"required"`
-					Tag        string `yaml:"tag" validate:"required"`
-					PullPolicy string `yaml:"pullPolicy" validate:"omitempty,oneof=Always IfNotPresent Never"`
-				}{
-					Repository: "ghcr.io/tacokumo/portal",
-					Tag:        "main",
-				},
-				Service: PortalServiceConfig{
-					Type:       "ClusterIP",
-					Port:       8080,
-					TargetPort: 8080,
-				},
-				ServiceAccount: admin.ServiceAccountConfig{
-					Create: true,
+			name: "valid with log level debug",
+			config: APIConfig{
+				PortalName: "test-portal",
+				LogLevel:   "debug",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
 				},
 			},
-			wantErr: true, // Name field is required
+			wantErr: false,
+		},
+		{
+			name: "valid with log level info",
+			config: APIConfig{
+				PortalName: "test-portal",
+				LogLevel:   "info",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with log level warn",
+			config: APIConfig{
+				PortalName: "test-portal",
+				LogLevel:   "warn",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with log level error",
+			config: APIConfig{
+				PortalName: "test-portal",
+				LogLevel:   "error",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid log level",
+			config: APIConfig{
+				PortalName: "test-portal",
+				LogLevel:   "invalid",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid image pull policy",
+			config: APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+					PullPolicy: "InvalidPolicy",
+				},
+			},
+			wantErr: true,
 		},
 	}
 
@@ -292,310 +147,104 @@ func TestPortalConfigValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("PortalConfig validation error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("APIConfig validation error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestPortalAppConfigValidation(t *testing.T) {
+func TestHPAConfigValidation(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  PortalAppConfig
+		config  HPAConfig
 		wantErr bool
 	}{
 		{
-			name: "valid portal app config",
-			config: PortalAppConfig{
-				Addr:       "0.0.0.0",
-				Port:       "8080",
-				BaseDomain: "example.com",
-				LogLevel:   "info",
-				PortalDB: PortalDBConfig{
-					Port:             5432,
-					InitialConnRetry: 10,
-				},
-				Auth: admin.AuthAppConfig{
-					CallbackURL:  "https://portal.example.com/auth/callback",
-					FrontendURL:  "https://portal.example.com",
-					GitHubOrg:    "test-org",
-					SessionTTL:   "24h",
-					CookieSecure: true,
-				},
-				Redis: admin.RedisAppConfig{
-					Port:             6379,
-					DB:               0,
-					InitialConnRetry: 10,
-				},
-				CORS: admin.CORSAppConfig{
-					AllowOrigins: "*",
-					AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-					AllowHeaders: "Authorization, Content-Type",
-					MaxAge:       86400,
-				},
-				TLS: admin.TLSAppConfig{
-					Enabled: false,
-				},
-				OpenTelemetry: PortalOpenTelemetryAppConfig{
-					Enabled: false,
-				},
+			name: "valid HPA config",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       1,
+				MaxReplicas:                       3,
+				TargetMemoryUtilizationPercentage: 80,
 			},
 			wantErr: false,
 		},
 		{
-			name: "invalid IP address",
-			config: PortalAppConfig{
-				Addr:       "invalid-ip",
-				Port:       "8080",
-				BaseDomain: "example.com",
-				LogLevel:   "info",
-				PortalDB: PortalDBConfig{
-					Port:             5432,
-					InitialConnRetry: 10,
-				},
-				Auth: admin.AuthAppConfig{
-					CallbackURL:  "https://portal.example.com/auth/callback",
-					FrontendURL:  "https://portal.example.com",
-					GitHubOrg:    "test-org",
-					SessionTTL:   "24h",
-					CookieSecure: true,
-				},
-				Redis: admin.RedisAppConfig{
-					Port:             6379,
-					DB:               0,
-					InitialConnRetry: 10,
-				},
-				CORS: admin.CORSAppConfig{
-					AllowOrigins: "*",
-					AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-					AllowHeaders: "Authorization, Content-Type",
-					MaxAge:       86400,
-				},
-			},
-			wantErr: true, // Addr: "invalid-ip" violates validate:"required,ip"
-		},
-		{
-			name: "invalid base domain",
-			config: PortalAppConfig{
-				Addr:       "0.0.0.0",
-				Port:       "8080",
-				BaseDomain: "invalid_domain",
-				LogLevel:   "info",
-				PortalDB: PortalDBConfig{
-					Port:             5432,
-					InitialConnRetry: 10,
-				},
-				Auth: admin.AuthAppConfig{
-					CallbackURL:  "https://portal.example.com/auth/callback",
-					FrontendURL:  "https://portal.example.com",
-					GitHubOrg:    "test-org",
-					SessionTTL:   "24h",
-					CookieSecure: true,
-				},
-				Redis: admin.RedisAppConfig{
-					Port:             6379,
-					DB:               0,
-					InitialConnRetry: 10,
-				},
-				CORS: admin.CORSAppConfig{
-					AllowOrigins: "*",
-					AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-					AllowHeaders: "Authorization, Content-Type",
-					MaxAge:       86400,
-				},
-			},
-			wantErr: true, // BaseDomain: "invalid_domain" violates validate:"required,fqdn"
-		},
-		{
-			name: "zero portal DB initial connection retry",
-			config: PortalAppConfig{
-				Addr:       "0.0.0.0",
-				Port:       "8080",
-				BaseDomain: "example.com",
-				LogLevel:   "info",
-				PortalDB: PortalDBConfig{
-					Port:             5432,
-					InitialConnRetry: 0,
-				},
-				Auth: admin.AuthAppConfig{
-					CallbackURL:  "https://portal.example.com/auth/callback",
-					FrontendURL:  "https://portal.example.com",
-					GitHubOrg:    "test-org",
-					SessionTTL:   "24h",
-					CookieSecure: true,
-				},
-				Redis: admin.RedisAppConfig{
-					Port:             6379,
-					DB:               0,
-					InitialConnRetry: 10,
-				},
-				CORS: admin.CORSAppConfig{
-					AllowOrigins: "*",
-					AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-					AllowHeaders: "Authorization, Content-Type",
-					MaxAge:       86400,
-				},
-			},
-			wantErr: true, // InitialConnRetry: 0 violates validate:"min=1"
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("PortalAppConfig validation error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestPortalDBConfigValidation(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  PortalDBConfig
-		wantErr bool
-	}{
-		{
-			name: "valid portal DB config",
-			config: PortalDBConfig{
-				Port:             5432,
-				InitialConnRetry: 10,
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid port",
-			config: PortalDBConfig{
-				Port:             0,
-				InitialConnRetry: 10,
-			},
-			wantErr: true, // Port: 0 violates validate:"min=1,max=65535"
-		},
-		{
-			name: "invalid port range (too high)",
-			config: PortalDBConfig{
-				Port:             70000,
-				InitialConnRetry: 10,
-			},
-			wantErr: true, // Port: 70000 violates validate:"min=1,max=65535"
-		},
-		{
-			name: "zero initial connection retry",
-			config: PortalDBConfig{
-				Port:             5432,
-				InitialConnRetry: 0,
-			},
-			wantErr: true, // InitialConnRetry: 0 violates validate:"min=1"
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("PortalDBConfig validation error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestPortalOpenTelemetryAppConfigValidation(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  PortalOpenTelemetryAppConfig
-		wantErr bool
-	}{
-		{
-			name: "OpenTelemetry disabled",
-			config: PortalOpenTelemetryAppConfig{
+			name: "disabled HPA (no validation required)",
+			config: HPAConfig{
 				Enabled: false,
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid OpenTelemetry config",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:        true,
-				ServiceName:    "tacokumo-portal",
-				TracesExporter: "otlp",
-				OTLPEndpoint:   "http://otel-collector:4317",
-				OTLPProtocol:   "grpc",
+			name: "zero min replicas",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       0,
+				MaxReplicas:                       3,
+				TargetMemoryUtilizationPercentage: 80,
+			},
+			wantErr: true,
+		},
+		{
+			name: "max replicas less than min replicas",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       5,
+				MaxReplicas:                       2,
+				TargetMemoryUtilizationPercentage: 80,
+			},
+			wantErr: true,
+		},
+		{
+			name: "memory utilization percentage too low",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       1,
+				MaxReplicas:                       3,
+				TargetMemoryUtilizationPercentage: 0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "memory utilization percentage too high",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       1,
+				MaxReplicas:                       3,
+				TargetMemoryUtilizationPercentage: 101,
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid with equal min and max replicas",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       2,
+				MaxReplicas:                       2,
+				TargetMemoryUtilizationPercentage: 80,
 			},
 			wantErr: false,
 		},
 		{
-			name: "OpenTelemetry enabled missing service name",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:        true,
-				TracesExporter: "otlp",
-				OTLPEndpoint:   "http://otel-collector:4317",
-				OTLPProtocol:   "grpc",
+			name: "valid with 100 percent memory utilization",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       1,
+				MaxReplicas:                       3,
+				TargetMemoryUtilizationPercentage: 100,
 			},
-			wantErr: false, // ServiceName is optional field, no validation error expected
+			wantErr: false,
 		},
 		{
-			name: "OpenTelemetry enabled missing traces exporter",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:      true,
-				ServiceName:  "tacokumo-portal",
-				OTLPEndpoint: "http://otel-collector:4317",
-				OTLPProtocol: "grpc",
+			name: "valid with 1 percent memory utilization",
+			config: HPAConfig{
+				Enabled:                           true,
+				MinReplicas:                       1,
+				MaxReplicas:                       3,
+				TargetMemoryUtilizationPercentage: 1,
 			},
-			wantErr: false, // TracesExporter is optional field, no validation error expected
-		},
-		{
-			name: "OpenTelemetry enabled invalid traces exporter",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:        true,
-				ServiceName:    "tacokumo-portal",
-				TracesExporter: "invalid",
-				OTLPEndpoint:   "http://otel-collector:4317",
-				OTLPProtocol:   "grpc",
-			},
-			wantErr: true, // TracesExporter: "invalid" violates validate:"omitempty,oneof=otlp jaeger zipkin console"
-		},
-		{
-			name: "OpenTelemetry enabled missing OTLP endpoint",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:        true,
-				ServiceName:    "tacokumo-portal",
-				TracesExporter: "otlp",
-				OTLPProtocol:   "grpc",
-			},
-			wantErr: false, // OTLPEndpoint is optional field, no validation error expected
-		},
-		{
-			name: "OpenTelemetry enabled invalid OTLP endpoint",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:        true,
-				ServiceName:    "tacokumo-portal",
-				TracesExporter: "otlp",
-				OTLPEndpoint:   "invalid-url",
-				OTLPProtocol:   "grpc",
-			},
-			wantErr: true, // OTLPEndpoint: "invalid-url" violates validate:"omitempty,url"
-		},
-		{
-			name: "OpenTelemetry enabled missing OTLP protocol",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:        true,
-				ServiceName:    "tacokumo-portal",
-				TracesExporter: "otlp",
-				OTLPEndpoint:   "http://otel-collector:4317",
-			},
-			wantErr: false, // OTLPProtocol is optional field, no validation error expected
-		},
-		{
-			name: "OpenTelemetry enabled invalid OTLP protocol",
-			config: PortalOpenTelemetryAppConfig{
-				Enabled:        true,
-				ServiceName:    "tacokumo-portal",
-				TracesExporter: "otlp",
-				OTLPEndpoint:   "http://otel-collector:4317",
-				OTLPProtocol:   "invalid",
-			},
-			wantErr: true, // OTLPProtocol: "invalid" violates validate:"omitempty,oneof=grpc http"
+			wantErr: false,
 		},
 	}
 
@@ -603,54 +252,732 @@ func TestPortalOpenTelemetryAppConfigValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("PortalOpenTelemetryAppConfig validation error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("HPAConfig validation error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestPortalServiceConfigValidation(t *testing.T) {
-	// PortalServiceConfig is identical to AdminServiceConfig, so we just test basic functionality
+func TestServiceConfigValidation(t *testing.T) {
 	tests := []struct {
 		name    string
-		service PortalServiceConfig
+		config  ServiceConfig
 		wantErr bool
 	}{
 		{
 			name: "valid ClusterIP service",
-			service: PortalServiceConfig{
-				Type:       "ClusterIP",
-				Port:       8080,
-				TargetPort: 8080,
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Port:    1323,
 			},
 			wantErr: false,
 		},
 		{
-			name: "invalid service type",
-			service: PortalServiceConfig{
-				Type:       "InvalidType",
-				Port:       8080,
-				TargetPort: 8080,
+			name: "valid NodePort service",
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "NodePort",
+				Port:    1323,
 			},
-			wantErr: true, // Type: "InvalidType" is not a valid service type
+			wantErr: false,
 		},
 		{
-			name: "invalid port",
-			service: PortalServiceConfig{
-				Type:       "ClusterIP",
-				Port:       0,
-				TargetPort: 8080,
+			name: "valid LoadBalancer service",
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "LoadBalancer",
+				Port:    1323,
 			},
-			wantErr: true, // Port: 0 violates validation rules
+			wantErr: false,
+		},
+		{
+			name: "disabled service (no validation required)",
+			config: ServiceConfig{
+				Enabled: false,
+			},
+			wantErr: false,
+		},
+		{
+			name: "enabled service missing port",
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Port:    0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid service type",
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "InvalidType",
+				Port:    1323,
+			},
+			wantErr: true,
+		},
+		{
+			name: "port too high",
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Port:    65536,
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid max port",
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Port:    65535,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid min port",
+			config: ServiceConfig{
+				Enabled: true,
+				Type:    "ClusterIP",
+				Port:    1,
+			},
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.service.Validate()
+			err := tt.config.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("PortalServiceConfig validation error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ServiceConfig validation error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
+}
+
+func TestProbeConfigValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		probe   ProbeConfig
+		wantErr bool
+	}{
+		{
+			name:    "empty probe (disabled)",
+			probe:   ProbeConfig{},
+			wantErr: false,
+		},
+		{
+			name: "valid HTTP probe",
+			probe: ProbeConfig{
+				HTTPGet: &HTTPGetAction{
+					Path: "/health/liveness",
+					Port: 1323,
+				},
+				InitialDelaySeconds: intPtr(15),
+				PeriodSeconds:       intPtr(20),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid TCP probe",
+			probe: ProbeConfig{
+				TCPSocket: &TCPSocketAction{
+					Port: 1323,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid exec probe",
+			probe: ProbeConfig{
+				Exec: &ExecAction{
+					Command: []string{"/bin/sh", "-c", "test -f /healthy"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "HTTP probe missing path",
+			probe: ProbeConfig{
+				HTTPGet: &HTTPGetAction{
+					Port: 1323,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "HTTP probe missing port",
+			probe: ProbeConfig{
+				HTTPGet: &HTTPGetAction{
+					Path: "/health",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "HTTP probe invalid port",
+			probe: ProbeConfig{
+				HTTPGet: &HTTPGetAction{
+					Path: "/health",
+					Port: 70000,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "TCP probe missing port",
+			probe: ProbeConfig{
+				TCPSocket: &TCPSocketAction{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "exec probe empty command",
+			probe: ProbeConfig{
+				Exec: &ExecAction{
+					Command: []string{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid period seconds",
+			probe: ProbeConfig{
+				HTTPGet: &HTTPGetAction{
+					Path: "/health",
+					Port: 1323,
+				},
+				PeriodSeconds: intPtr(0),
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid HTTP probe with HTTPS scheme",
+			probe: ProbeConfig{
+				HTTPGet: &HTTPGetAction{
+					Path:   "/health",
+					Port:   1323,
+					Scheme: "HTTPS",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "HTTP probe invalid scheme",
+			probe: ProbeConfig{
+				HTTPGet: &HTTPGetAction{
+					Path:   "/health",
+					Port:   1323,
+					Scheme: "INVALID",
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.probe.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ProbeConfig validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestEnvVarValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		env     EnvVar
+		wantErr bool
+	}{
+		{
+			name: "valid env with value",
+			env: EnvVar{
+				Name:  "MY_VAR",
+				Value: "my-value",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid env with configMapKeyRef",
+			env: EnvVar{
+				Name: "MY_VAR",
+				ValueFrom: &EnvVarSource{
+					ConfigMapKeyRef: &ConfigMapKeySelector{
+						Name: "my-configmap",
+						Key:  "my-key",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid env with secretKeyRef",
+			env: EnvVar{
+				Name: "MY_VAR",
+				ValueFrom: &EnvVarSource{
+					SecretKeyRef: &SecretKeySelector{
+						Name: "my-secret",
+						Key:  "my-key",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid env with fieldRef",
+			env: EnvVar{
+				Name: "MY_VAR",
+				ValueFrom: &EnvVarSource{
+					FieldRef: &ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:    "missing name",
+			env:     EnvVar{},
+			wantErr: true,
+		},
+		{
+			name: "configMapKeyRef missing name",
+			env: EnvVar{
+				Name: "MY_VAR",
+				ValueFrom: &EnvVarSource{
+					ConfigMapKeyRef: &ConfigMapKeySelector{
+						Key: "my-key",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "configMapKeyRef missing key",
+			env: EnvVar{
+				Name: "MY_VAR",
+				ValueFrom: &EnvVarSource{
+					ConfigMapKeyRef: &ConfigMapKeySelector{
+						Name: "my-configmap",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretKeyRef missing name",
+			env: EnvVar{
+				Name: "MY_VAR",
+				ValueFrom: &EnvVarSource{
+					SecretKeyRef: &SecretKeySelector{
+						Key: "my-key",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretKeyRef missing key",
+			env: EnvVar{
+				Name: "MY_VAR",
+				ValueFrom: &EnvVarSource{
+					SecretKeyRef: &SecretKeySelector{
+						Name: "my-secret",
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+				Env: []EnvVar{tt.env},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EnvVar validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestEnvFromSourceValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		envFrom EnvFromSource
+		wantErr bool
+	}{
+		{
+			name: "valid ConfigMap reference",
+			envFrom: EnvFromSource{
+				ConfigMapRef: &ConfigMapEnvSource{
+					Name: "app-config",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid Secret reference",
+			envFrom: EnvFromSource{
+				SecretRef: &SecretEnvSource{
+					Name: "app-secrets",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid ConfigMap reference with prefix",
+			envFrom: EnvFromSource{
+				Prefix: "CONFIG_",
+				ConfigMapRef: &ConfigMapEnvSource{
+					Name: "app-config",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "ConfigMap reference missing name",
+			envFrom: EnvFromSource{
+				ConfigMapRef: &ConfigMapEnvSource{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Secret reference missing name",
+			envFrom: EnvFromSource{
+				SecretRef: &SecretEnvSource{},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+				EnvFrom: []EnvFromSource{tt.envFrom},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EnvFromSource validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestImagePullSecretValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		secret  ImagePullSecret
+		wantErr bool
+	}{
+		{
+			name: "valid secret",
+			secret: ImagePullSecret{
+				Name: "regcred",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "missing name",
+			secret:  ImagePullSecret{},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+				ImagePullSecrets: []ImagePullSecret{tt.secret},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ImagePullSecret validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestResourceConfigValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		resources ResourceConfig
+		wantErr   bool
+	}{
+		{
+			name:      "empty resources (default)",
+			resources: ResourceConfig{},
+			wantErr:   false,
+		},
+		{
+			name: "limits only",
+			resources: ResourceConfig{
+				Limits: ResourceSpec{
+					CPU:    "500m",
+					Memory: "256Mi",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "requests only",
+			resources: ResourceConfig{
+				Requests: ResourceSpec{
+					CPU:    "100m",
+					Memory: "128Mi",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "both limits and requests",
+			resources: ResourceConfig{
+				Limits: ResourceSpec{
+					CPU:    "500m",
+					Memory: "256Mi",
+				},
+				Requests: ResourceSpec{
+					CPU:    "100m",
+					Memory: "128Mi",
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+				Resources: tt.resources,
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ResourceConfig validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSecurityContextValidation(t *testing.T) {
+	tests := []struct {
+		name            string
+		securityContext SecurityContext
+		wantErr         bool
+	}{
+		{
+			name:            "empty security context",
+			securityContext: SecurityContext{},
+			wantErr:         false,
+		},
+		{
+			name: "valid with runAsUser",
+			securityContext: SecurityContext{
+				RunAsUser: int64Ptr(65532),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with runAsNonRoot",
+			securityContext: SecurityContext{
+				RunAsNonRoot: boolPtr(true),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with readOnlyRootFilesystem",
+			securityContext: SecurityContext{
+				ReadOnlyRootFilesystem: boolPtr(true),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with allowPrivilegeEscalation false",
+			securityContext: SecurityContext{
+				AllowPrivilegeEscalation: boolPtr(false),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with capabilities drop ALL",
+			securityContext: SecurityContext{
+				Capabilities: &Capabilities{
+					Drop: []string{"ALL"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid seccomp profile RuntimeDefault",
+			securityContext: SecurityContext{
+				SeccompProfile: &SeccompProfile{
+					Type: "RuntimeDefault",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid seccomp profile Unconfined",
+			securityContext: SecurityContext{
+				SeccompProfile: &SeccompProfile{
+					Type: "Unconfined",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid seccomp profile Localhost with profile",
+			securityContext: SecurityContext{
+				SeccompProfile: &SeccompProfile{
+					Type:             "Localhost",
+					LocalhostProfile: "my-profile.json",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid seccomp profile type",
+			securityContext: SecurityContext{
+				SeccompProfile: &SeccompProfile{
+					Type: "InvalidType",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "seccomp Localhost missing profile",
+			securityContext: SecurityContext{
+				SeccompProfile: &SeccompProfile{
+					Type: "Localhost",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "negative runAsUser",
+			securityContext: SecurityContext{
+				RunAsUser: int64Ptr(-1),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+				SecurityContext: tt.securityContext,
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SecurityContext validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestServiceAccountConfigValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  ServiceAccountConfig
+		wantErr bool
+	}{
+		{
+			name: "valid with create true and name",
+			config: ServiceAccountConfig{
+				Create: true,
+				Name:   "portal-api",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with create false and no name",
+			config: ServiceAccountConfig{
+				Create: false,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with annotations",
+			config: ServiceAccountConfig{
+				Create: true,
+				Name:   "portal-api",
+				Annotations: map[string]string{
+					"eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/my-role",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "create true missing name",
+			config: ServiceAccountConfig{
+				Create: true,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := APIConfig{
+				PortalName: "test-portal",
+				Image: helmcharts.Image{
+					Repository: "ghcr.io/tacokumo/portal-api",
+					Tag:        "latest",
+				},
+				ServiceAccount: tt.config,
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ServiceAccountConfig validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// Helper function to create int pointers for test cases
+func intPtr(i int) *int {
+	return &i
+}
+
+// Helper function to create int64 pointers for test cases
+func int64Ptr(i int64) *int64 {
+	return &i
+}
+
+// Helper function to create bool pointers for test cases
+func boolPtr(b bool) *bool {
+	return &b
 }
