@@ -18,18 +18,28 @@ data:
         }
     }
 
-    # Main proxy configuration
-    :80 {
-        # Dynamic proxy rule: <name>.{{ .Values.portalProxy.baseDomain }} -> portal.<name>.svc.cluster.local
-        @proxy_rule host_regexp name ^([^.]+)\.{{ .Values.portalProxy.baseDomain }}$
-        handle @proxy_rule {
+    # Main proxy configuration for path-based routing
+    portal.{{ .Values.portalProxy.baseDomain }} {
+        # API endpoint routing: /<name>/api/* -> portal-api.<name>.svc.cluster.local
+        @api_route path_regexp name ^/([^/]+)/api(/.*)?$
+        handle @api_route {
+            uri strip_prefix /{re.name.1}/api
+            reverse_proxy portal-api.{re.name.1}.svc.cluster.local:1323 {
+                header_up Host {upstream_hostport}
+            }
+        }
+
+        # Frontend routing: /<name>/* -> portal.<name>.svc.cluster.local
+        @frontend_route path_regexp name ^/([^/]+)(/.*)?$
+        handle @frontend_route {
+            uri strip_prefix /{re.name.1}
             reverse_proxy portal.{re.name.1}.svc.cluster.local:80 {
                 header_up Host {upstream_hostport}
             }
         }
 
-        # Default response for non-matching requests
-        respond "Portal Proxy Ready" 200
+        # Root path default response
+        respond "Portal Proxy Ready - Path-based routing active" 200
     }
 
     # Metrics endpoint on separate port

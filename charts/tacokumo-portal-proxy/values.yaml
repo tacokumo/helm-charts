@@ -12,6 +12,31 @@ portalProxy:
     httpPort: 80
     metricsPort: 2019
 
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: "proxy.{{ .Values.portalProxy.baseDomain }}"
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  route:
+    http:
+      enabled: false
+      parentRefs:
+        - name: default-gateway
+          namespace: gateway-system
+      hostnames:
+        - "proxy.{{ .Values.portalProxy.baseDomain }}"
+      rules:
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /
+
   resources:
     limits:
       cpu: 100m

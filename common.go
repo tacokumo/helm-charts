@@ -211,3 +211,44 @@ func (s *Service) Validate() error {
 func (i *Ingress) Validate() error {
 	return validator.New().Struct(i)
 }
+
+// HTTPRoute represents Gateway API HTTPRoute configuration
+type HTTPRoute struct {
+	Enabled     bool                  `yaml:"enabled"`
+	ParentRefs  []HTTPRouteParentRef  `yaml:"parentRefs,omitempty" validate:"required_if=Enabled true,dive"`
+	Hostnames   []string              `yaml:"hostnames,omitempty" validate:"required_if=Enabled true,dive,fqdn"`
+	Rules       []HTTPRouteRule       `yaml:"rules,omitempty" validate:"required_if=Enabled true,dive"`
+}
+
+// HTTPRouteParentRef represents HTTPRoute parent reference
+type HTTPRouteParentRef struct {
+	Name      string `yaml:"name" validate:"required"`
+	Namespace string `yaml:"namespace" validate:"required"`
+}
+
+// HTTPRouteRule represents HTTPRoute rule
+type HTTPRouteRule struct {
+	Matches []HTTPRouteMatch `yaml:"matches,omitempty" validate:"dive"`
+}
+
+// HTTPRouteMatch represents HTTPRoute match
+type HTTPRouteMatch struct {
+	Path    *HTTPRoutePath    `yaml:"path,omitempty"`
+	Headers []HTTPRouteHeader `yaml:"headers,omitempty" validate:"dive"`
+}
+
+// HTTPRoutePath represents HTTPRoute path match
+type HTTPRoutePath struct {
+	Type  string `yaml:"type" validate:"required,oneof=PathPrefix Exact RegularExpression"`
+	Value string `yaml:"value" validate:"required"`
+}
+
+// HTTPRouteHeader represents HTTPRoute header match
+type HTTPRouteHeader struct {
+	Name  string `yaml:"name" validate:"required"`
+	Value string `yaml:"value" validate:"required"`
+}
+
+func (h *HTTPRoute) Validate() error {
+	return validator.New().Struct(h)
+}

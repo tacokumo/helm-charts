@@ -724,3 +724,498 @@ func TestServicePortConfigValidation(t *testing.T) {
 func intPtr(i int) *int {
 	return &i
 }
+
+func TestIngressConfigValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		ingress IngressConfig
+		wantErr bool
+	}{
+		{
+			name: "disabled ingress",
+			ingress: IngressConfig{
+				Enabled: false,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid enabled ingress",
+			ingress: IngressConfig{
+				Enabled:   true,
+				ClassName: "nginx",
+				Annotations: map[string]string{
+					"nginx.ingress.kubernetes.io/rewrite-target": "/",
+				},
+				Hosts: []IngressHost{
+					{
+						Host: "app.example.com",
+						Paths: []IngressPath{
+							{
+								Path:     "/",
+								PathType: "Prefix",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "enabled ingress missing className",
+			ingress: IngressConfig{
+				Enabled: true,
+				Hosts: []IngressHost{
+					{
+						Host: "app.example.com",
+						Paths: []IngressPath{
+							{
+								Path:     "/",
+								PathType: "Prefix",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "enabled ingress missing hosts",
+			ingress: IngressConfig{
+				Enabled:   true,
+				ClassName: "nginx",
+			},
+			wantErr: true,
+		},
+		{
+			name: "enabled ingress with TLS",
+			ingress: IngressConfig{
+				Enabled:   true,
+				ClassName: "nginx",
+				Hosts: []IngressHost{
+					{
+						Host: "app.example.com",
+						Paths: []IngressPath{
+							{
+								Path:     "/",
+								PathType: "Prefix",
+							},
+						},
+					},
+				},
+				TLS: []IngressTLS{
+					{
+						SecretName: "app-tls",
+						Hosts:      []string{"app.example.com"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid host format",
+			ingress: IngressConfig{
+				Enabled:   true,
+				ClassName: "nginx",
+				Hosts: []IngressHost{
+					{
+						Host: "invalid-host",
+						Paths: []IngressPath{
+							{
+								Path:     "/",
+								PathType: "Prefix",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid path type",
+			ingress: IngressConfig{
+				Enabled:   true,
+				ClassName: "nginx",
+				Hosts: []IngressHost{
+					{
+						Host: "app.example.com",
+						Paths: []IngressPath{
+							{
+								Path:     "/",
+								PathType: "InvalidType",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "TLS missing secret name",
+			ingress: IngressConfig{
+				Enabled:   true,
+				ClassName: "nginx",
+				Hosts: []IngressHost{
+					{
+						Host: "app.example.com",
+						Paths: []IngressPath{
+							{
+								Path:     "/",
+								PathType: "Prefix",
+							},
+						},
+					},
+				},
+				TLS: []IngressTLS{
+					{
+						Hosts: []string{"app.example.com"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := MainConfig{
+				ApplicationName: "test-app",
+				Image:           "nginx:latest",
+				Ingress:         tt.ingress,
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IngressConfig validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestHTTPRouteConfigValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		route   RouteConfig
+		wantErr bool
+	}{
+		{
+			name: "disabled HTTPRoute",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: false,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid enabled HTTPRoute",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "PathPrefix",
+										Value: "/",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "enabled HTTPRoute missing parentRefs",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled:   true,
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "PathPrefix",
+										Value: "/",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "enabled HTTPRoute missing hostnames",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "PathPrefix",
+										Value: "/",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "enabled HTTPRoute missing rules",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid hostname format",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"invalid-hostname"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "PathPrefix",
+										Value: "/",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "parentRef missing name",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "PathPrefix",
+										Value: "/",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "parentRef missing namespace",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name: "default-gateway",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "PathPrefix",
+										Value: "/",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid path type",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "InvalidType",
+										Value: "/",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "path missing value",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type: "PathPrefix",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Exact path type",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "Exact",
+										Value: "/api/v1/health",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "RegularExpression path type",
+			route: RouteConfig{
+				HTTP: HTTPRouteConfig{
+					Enabled: true,
+					ParentRefs: []HTTPRouteParentRef{
+						{
+							Name:      "default-gateway",
+							Namespace: "gateway-system",
+						},
+					},
+					Hostnames: []string{"app.example.com"},
+					Rules: []HTTPRouteRule{
+						{
+							Matches: []HTTPRouteMatch{
+								{
+									Path: &HTTPRoutePath{
+										Type:  "RegularExpression",
+										Value: "/api/.*/health",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := MainConfig{
+				ApplicationName: "test-app",
+				Image:           "nginx:latest",
+				Route:           tt.route,
+				HPA: HPAConfig{
+					MinReplicas:                       1,
+					MaxReplicas:                       1,
+					TargetMemoryUtilizationPercentage: 80,
+				},
+			}
+
+			err := config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HTTPRouteConfig validation error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

@@ -20,6 +20,12 @@ type PortalProxyConfig struct {
 	// Service configuration
 	Service ProxyServiceConfig `yaml:"service" validate:"required"`
 
+	// Ingress configuration
+	Ingress IngressConfig `yaml:"ingress"`
+
+	// HTTPRoute configuration
+	Route RouteConfig `yaml:"route"`
+
 	// Resource limits and requests
 	Resources helmcharts.Resources `yaml:"resources"`
 
@@ -252,6 +258,68 @@ type DownwardAPIVolumeFile struct {
 	Mode             *int32                 `yaml:"mode,omitempty" validate:"omitempty,min=0,max=511"`
 }
 
+// IngressConfig represents Kubernetes Ingress configuration for tacokumo-portal-proxy
+type IngressConfig struct {
+	Enabled     bool              `yaml:"enabled"`
+	ClassName   string            `yaml:"className,omitempty" validate:"required_if=Enabled true"`
+	Annotations map[string]string `yaml:"annotations,omitempty"`
+	Hosts       []IngressHost     `yaml:"hosts,omitempty" validate:"required_if=Enabled true,dive"`
+	TLS         []IngressTLS      `yaml:"tls,omitempty" validate:"dive"`
+}
+
+// IngressHost represents ingress host configuration for tacokumo-portal-proxy
+type IngressHost struct {
+	Host  string        `yaml:"host" validate:"required,fqdn"`
+	Paths []IngressPath `yaml:"paths" validate:"required,dive"`
+}
+
+// IngressPath represents ingress path configuration for tacokumo-portal-proxy
+type IngressPath struct {
+	Path     string `yaml:"path" validate:"required"`
+	PathType string `yaml:"pathType" validate:"required,oneof=Exact Prefix ImplementationSpecific"`
+}
+
+// IngressTLS represents ingress TLS configuration for tacokumo-portal-proxy
+type IngressTLS struct {
+	SecretName string   `yaml:"secretName" validate:"required"`
+	Hosts      []string `yaml:"hosts" validate:"required,dive,fqdn"`
+}
+
+// RouteConfig represents HTTPRoute configuration for tacokumo-portal-proxy
+type RouteConfig struct {
+	HTTP HTTPRouteConfig `yaml:"http"`
+}
+
+// HTTPRouteConfig represents Gateway API HTTPRoute configuration for tacokumo-portal-proxy
+type HTTPRouteConfig struct {
+	Enabled     bool                  `yaml:"enabled"`
+	ParentRefs  []HTTPRouteParentRef  `yaml:"parentRefs,omitempty" validate:"required_if=Enabled true,dive"`
+	Hostnames   []string              `yaml:"hostnames,omitempty" validate:"required_if=Enabled true,dive,fqdn"`
+	Rules       []HTTPRouteRule       `yaml:"rules,omitempty" validate:"required_if=Enabled true,dive"`
+}
+
+// HTTPRouteParentRef represents HTTPRoute parent reference for tacokumo-portal-proxy
+type HTTPRouteParentRef struct {
+	Name      string `yaml:"name" validate:"required"`
+	Namespace string `yaml:"namespace" validate:"required"`
+}
+
+// HTTPRouteRule represents HTTPRoute rule for tacokumo-portal-proxy
+type HTTPRouteRule struct {
+	Matches []HTTPRouteMatch `yaml:"matches,omitempty" validate:"dive"`
+}
+
+// HTTPRouteMatch represents HTTPRoute match for tacokumo-portal-proxy
+type HTTPRouteMatch struct {
+	Path *HTTPRoutePath `yaml:"path,omitempty"`
+}
+
+// HTTPRoutePath represents HTTPRoute path match for tacokumo-portal-proxy
+type HTTPRoutePath struct {
+	Type  string `yaml:"type" validate:"required,oneof=PathPrefix Exact RegularExpression"`
+	Value string `yaml:"value" validate:"required"`
+}
+
 // Validate validates the entire Values configuration
 func (v *Values) Validate() error {
 	return helmcharts.ValidateStruct(v)
@@ -259,10 +327,36 @@ func (v *Values) Validate() error {
 
 // Validate validates the PortalProxyConfig
 func (p *PortalProxyConfig) Validate() error {
-	return helmcharts.ValidateStruct(p)
+	if err := helmcharts.ValidateStruct(p); err != nil {
+		return err
+	}
+	// Validate IngressConfig
+	if err := p.Ingress.Validate(); err != nil {
+		return err
+	}
+	// Validate RouteConfig
+	if err := p.Route.Validate(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Validate validates the ProxyServiceConfig
 func (s *ProxyServiceConfig) Validate() error {
 	return helmcharts.ValidateStruct(s)
+}
+
+// Validate validates the IngressConfig
+func (i *IngressConfig) Validate() error {
+	return helmcharts.ValidateStruct(i)
+}
+
+// Validate validates the RouteConfig
+func (r *RouteConfig) Validate() error {
+	return helmcharts.ValidateStruct(r)
+}
+
+// Validate validates the HTTPRouteConfig
+func (h *HTTPRouteConfig) Validate() error {
+	return helmcharts.ValidateStruct(h)
 }

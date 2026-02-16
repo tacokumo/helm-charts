@@ -1,0 +1,55 @@
+{{- if .Values.portalProxy.route.http.enabled -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: tacokumo-portal-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/name: tacokumo-portal-proxy
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  {{- if .Values.portalProxy.route.http.parentRefs }}
+  parentRefs:
+    {{- range .Values.portalProxy.route.http.parentRefs }}
+    - name: {{ .name }}
+      {{- if .namespace }}
+      namespace: {{ .namespace }}
+      {{- end }}
+      {{- if .sectionName }}
+      sectionName: {{ .sectionName }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.portalProxy.route.http.hostnames }}
+  hostnames:
+    {{- range .Values.portalProxy.route.http.hostnames }}
+    - {{ tpl . $ | quote }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.portalProxy.route.http.rules }}
+    - matches:
+        {{- range .matches }}
+        {{- if .path }}
+        - path:
+            type: {{ .path.type | default "PathPrefix" }}
+            value: {{ .path.value | default "/" }}
+        {{- end }}
+        {{- if .headers }}
+          headers:
+            {{- range .headers }}
+            - name: {{ .name }}
+              type: {{ .type | default "Exact" }}
+              value: {{ .value }}
+            {{- end }}
+        {{- end }}
+        {{- end }}
+      backendRefs:
+        - name: tacokumo-portal-proxy
+          port: {{ $.Values.portalProxy.service.httpPort }}
+          weight: {{ .weight | default 100 }}
+    {{- end }}
+{{- end }}

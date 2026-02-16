@@ -1,0 +1,50 @@
+{{- if .Values.portalProxy.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tacokumo-portal-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/name: tacokumo-portal-proxy
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+  {{- with .Values.portalProxy.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.portalProxy.ingress.className }}
+  ingressClassName: {{ .Values.portalProxy.ingress.className }}
+  {{- end }}
+  {{- if .Values.portalProxy.ingress.tls }}
+  tls:
+    {{- range .Values.portalProxy.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.portalProxy.ingress.hosts }}
+    - host: {{ tpl .host $ | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: tacokumo-portal-proxy
+                port:
+                  {{- if .serviceName }}
+                  name: {{ .serviceName }}
+                  {{- else }}
+                  number: {{ $.Values.portalProxy.service.httpPort }}
+                  {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}
