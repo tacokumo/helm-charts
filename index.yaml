@@ -289,6 +289,16 @@ entries:
   tacokumo-application:
   - apiVersion: v2
     appVersion: 1.16.0
+    created: "2026-02-16T09:06:03.852506575Z"
+    description: A Helm chart for Kubernetes
+    digest: 27ffd98479f0d354e5acca868235a515b17d7a01875e9d300f5b87e1db4f8520
+    name: tacokumo-application
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-application-0.3.0/tacokumo-application-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v2
+    appVersion: 1.16.0
     created: "2026-02-01T15:07:14.421864587Z"
     description: A Helm chart for Kubernetes
     digest: da5cdb288bc0034cfa8788c02c6626e7c8cc3f683da4e58db8f2efbcaf2ff66e
@@ -332,6 +342,16 @@ entries:
   tacokumo-portal-proxy:
   - apiVersion: v2
     appVersion: "2.11"
+    created: "2026-02-16T09:06:04.104995968Z"
+    description: Helm chart for Tacokumo Portal Proxy with Caddy
+    digest: 1350743a3d6a6faeb09c8aa38f53893e994e5153a727e930b61ae2ab0d06cafb
+    name: tacokumo-portal-proxy
+    type: application
+    urls:
+    - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-proxy-0.2.0/tacokumo-portal-proxy-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
+    appVersion: "2.11"
     created: "2026-01-26T03:35:34.290320921Z"
     description: Helm chart for Tacokumo Portal Proxy with Caddy
     digest: 17648d392dadb5c551b88bde565dcc66e3399944a68c0a5eff94ec3c9b824d53
@@ -340,4 +360,4 @@ entries:
     urls:
     - https://github.com/tacokumo/helm-charts/releases/download/tacokumo-portal-proxy-0.1.0/tacokumo-portal-proxy-0.1.0.tgz
     version: 0.1.0
-generated: "2026-02-09T16:03:22.637517356Z"
+generated: "2026-02-16T09:06:04.105083542Z"
